@@ -8,5 +8,11 @@
     <artifactId>cnr-sniffer</artifactId>
     <version>1.0-SNAPSHOT</version>
 
-
+    <dependencies>
+        <dependency>
+            <groupId>edu.nps.moves</groupId>
+            <artifactId>open-dis</artifactId>
+            <version>4.08</version>
+        </dependency>
+    </dependencies>
 </project>
