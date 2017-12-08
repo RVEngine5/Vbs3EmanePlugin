@@ -10,7 +10,7 @@ public class RawAudioPlay {
     private SourceDataLine line;
 
     public RawAudioPlay() throws LineUnavailableException {
-        af = new AudioFormat(44100, 16, 1, true, false);
+        af = new AudioFormat(44100, 16, 1, true, true);
         DataLine.Info info = new DataLine.Info(SourceDataLine.class, af);
         line = (SourceDataLine) AudioSystem.getLine(info);
         line.open(af, 4096);

@@ -1,5 +1,7 @@
 package com.artistech.cnr;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -61,6 +63,17 @@ public class Sniffer {
                     System.out.println("Encoding Scheme: " + spdu.getEncodingScheme()); // 4
                     System.out.println("Num Samples: " + spdu.getSamples());            // 160
                     List<OneByteChunk> d = spdu.getData();
+                    System.out.println(d.size());
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    DataOutputStream dos = new DataOutputStream(baos);
+
+                    //HACK!!
+                    int size = 320; //<- this is the desired value, but not sure if it should be hard coded.
+                    size = spdu.getDataLength() / 8;// NOT SURE IF THIS IS A PROPER ALGORITHM
+                    for(int ii = 0; ii < size; ii++) {
+                        d.get(ii).marshal(dos);
+                    }
+                    rap.play(baos.toByteArray());
 
                     System.out.println("Radio ID: " + spdu.getRadioId());               // ID: 11761
                     System.out.println("Entity ID: " + spdu.getEntityId().getEntity()); // 0
