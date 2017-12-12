@@ -4,6 +4,8 @@ import javax.sound.sampled.*;
 
 /**
  * https://stackoverflow.com/questions/32873596/play-raw-pcm-audio-received-in-udp-packets
+ *
+ * Play audio packets received to ensure data is coming through properly.
  */
 public class RawAudioPlay {
     private AudioFormat af;
