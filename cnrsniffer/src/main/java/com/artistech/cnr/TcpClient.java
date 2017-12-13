@@ -8,6 +8,7 @@ import java.net.MulticastSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import edu.nps.moves.disenum.PduType;
+import org.zeromq.ZMQ;
 
 /**
  * Listens for multi-cast data from CNR to send/stream to a listening server.
@@ -15,6 +16,14 @@ import edu.nps.moves.disenum.PduType;
 public class TcpClient {
 
     public static void main(String[] args) throws Exception {
+        ZMQ.Context context;
+        ZMQ.Socket publisher;
+
+//        ZMQ.Socket listener;
+        context = ZMQ.context(1);
+        publisher = context.socket(ZMQ.PUB);
+        publisher.bind("tcp://*:5566");
+
         InetAddress group = InetAddress.getByName(Sniffer.MCAST_GRP);
         final MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
         //uncomment this if you want to listen on non-localhost IP
@@ -26,12 +35,13 @@ public class TcpClient {
         boolean cont = true;
 
         //connect to waiting server...
-        Socket socket = new Socket("192.168.0.100", TcpServer.TCP_PORT);
+//        Socket socket = new Socket("192.168.0.100", TcpServer.TCP_PORT);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("closing...");
             try {
-                socket.close();
+//                socket.close();
+                publisher.close();
 
                 ms.leaveGroup(group);
                 ms.close();
@@ -40,7 +50,7 @@ public class TcpClient {
             }
         }));
 
-        DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
+//        DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (cont) {
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
             ms.receive(dp);
@@ -54,14 +64,16 @@ public class TcpClient {
 
             switch(pduTypeEnum) {
                 case SIGNAL:
-                    socketOutputStream.writeInt(data.length);
-                    socketOutputStream.write(data);
-                    socketOutputStream.flush();
+                    publisher.send(data, 0);
+//                    socketOutputStream.writeInt(data.length);
+//                    socketOutputStream.write(data);
+//                    socketOutputStream.flush();
                     break;
                 case TRANSMITTER:
-                    socketOutputStream.writeInt(data.length);
-                    socketOutputStream.write(data);
-                    socketOutputStream.flush();
+                    publisher.send(data, 0);
+//                    socketOutputStream.writeInt(data.length);
+//                    socketOutputStream.write(data);
+//                    socketOutputStream.flush();
                     break;
             }
         }
