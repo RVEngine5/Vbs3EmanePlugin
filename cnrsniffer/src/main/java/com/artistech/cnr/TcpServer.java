@@ -116,9 +116,10 @@ public class TcpServer {
             lt.halt();
         }));
 
+        t.start();
         System.out.println("waiting...");
 
-        while(!t.isAlive()) {
+        while(t.isAlive()) {
         }
 
     }
