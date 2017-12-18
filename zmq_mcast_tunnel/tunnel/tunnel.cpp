@@ -237,36 +237,9 @@ void *start_pub(void *args) {
 	socklen_t socklen = sizeof(addr);
 
 	char *pub_addr;
-	//char *rep_addr;
 	int ret;
 	int i;
 
-	////char szHostName[255];
-	////gethostname(szHostName, 255);
-	////struct hostent *host_entry;
-	////host_entry = getaddrinfo();// (szHostName);
-	//struct addrinfo hints, *infoptr = NULL;
-	//hints.ai_family = AF_UNSPEC;
-	//hints.ai_socktype = SOCK_STREAM;
-	//hints.ai_protocol = IPPROTO_TCP;
-
-	//DWORD dwRetval = getaddrinfo("localhost", NULL, &hints, &infoptr);
-	//if (dwRetval != 0) {
-	//	printf("getaddrinfo failed with error: %d\n", dwRetval);
-	//	exit(1);
-	//}
-	//sockaddr_in *sockaddr_ipv4 = (struct sockaddr_in *) infoptr->ai_addr;
-	//char* ans = new char[80];
-	//inet_ntop(AF_INET, (void *)infoptr, ans, 80);
-
-	//printf("IPv4 address %s\n", ans);
-	//delete[] ans;
-
-	//char * szLocalIP;
-	//szLocalIP = inet_ntoa(*(struct in_addr *)*host_entry->h_addr_list);
-
-	//in_addr loc = doit();
-	// publish socket
 	pub_addr = gen_zmq_addr("0.0.0.0", 5556);
 	publisher.bind(pub_addr);
 
