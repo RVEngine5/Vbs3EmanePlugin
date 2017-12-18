@@ -20,6 +20,9 @@ public class TcpClient {
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (true) {
+            if(socket.isClosed()) {
+                return;
+            }
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
             ms.receive(dp);
             byte[] data = dp.getData();
@@ -41,6 +44,15 @@ public class TcpClient {
         }
     }
 
+    /**
+     * TODO: when connection is lost to socket in the new thread, try to kill everything.
+     * What is happening is that the client doesn't try to re-connect to a new server instance if the server
+     * stops and then re-starts.
+     *
+     * @param host
+     * @param port
+     * @throws IOException
+     */
     public static void send(String host, int port) throws IOException {
         System.out.println("waiting for server: " + host + ":" + port);
 
@@ -52,6 +64,10 @@ public class TcpClient {
             System.out.println("Starting Server Thread...");
             try {
                 TcpServer.receive(socket, Rebroadcaster.INSTANCE);
+            } catch(IOException ex) {
+                ex.printStackTrace(System.out);
+            }
+            try {
                 socket.close();
             } catch(IOException ex) {
                 ex.printStackTrace(System.out);
