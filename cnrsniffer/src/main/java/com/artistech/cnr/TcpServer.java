@@ -44,6 +44,7 @@ public class TcpServer {
 //                ByteBuffer buf = ByteBuffer.wrap(data);
 
                 try {
+                    System.out.println("Rebroadcasting on multicast channel");
                     rebroadcaster.send(data);
                 } catch(IOException ex) {
                     ex.printStackTrace(System.out);

@@ -41,34 +41,33 @@ public class TcpClient {
         }
     }
 
-    public static void send(final MulticastSocket ms, String host, int port) throws IOException {
+    public static void send(String host, int port) throws IOException {
         System.out.println("waiting for server: " + host + ":" + port);
 
         //connect to waiting server...
         final Socket socket = new Socket(host, port);
-        System.out.println("[socket, host, port] receiving");
+        System.out.println("[socket, host, port] sending");
 
         Thread t = new Thread(() -> {
             System.out.println("Starting Server Thread...");
             try {
                 TcpServer.receive(socket, Rebroadcaster.INSTANCE);
-            } catch (IOException ex) {
+                socket.close();
+            } catch(IOException ex) {
                 ex.printStackTrace(System.out);
             }
         });
         t.setDaemon(true);
         t.start();
 
-        send(ms, socket);
+        send(Rebroadcaster.INSTANCE.getSocket(), socket);
     }
-
-    public static MulticastSocket ms;
 
     public static void main(String[] args) throws Exception {
         if(args.length > 0) {
             while(true) {
                 try {
-                    send(Rebroadcaster.INSTANCE.getSocket(), args[0], TcpServer.TCP_PORT);
+                    send(args[0], TcpServer.TCP_PORT);
                 } catch(IOException ex) {
                     ex.printStackTrace(System.out);
                 }
