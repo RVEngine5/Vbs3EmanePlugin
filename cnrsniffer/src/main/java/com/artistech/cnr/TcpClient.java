@@ -16,7 +16,7 @@ public class TcpClient {
 
     public static void send(MulticastSocket ms, Socket socket) throws IOException {
         byte[] buffer = new byte[8192];
-        System.out.println("receiving");
+        System.out.println("[socket, socket] receiving");
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (true) {
@@ -32,10 +32,6 @@ public class TcpClient {
 
             switch(pduTypeEnum) {
                 case SIGNAL:
-                    socketOutputStream.writeInt(data.length);
-                    socketOutputStream.write(data);
-                    socketOutputStream.flush();
-                    break;
                 case TRANSMITTER:
                     socketOutputStream.writeInt(data.length);
                     socketOutputStream.write(data);
@@ -50,7 +46,7 @@ public class TcpClient {
 
         //connect to waiting server...
         Socket socket = new Socket(host, port);
-        System.out.println("receiving");
+        System.out.println("[socket, host, port] receiving");
 
         send(ms, socket);
     }
