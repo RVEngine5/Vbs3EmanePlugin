@@ -14,9 +14,9 @@ import edu.nps.moves.disenum.PduType;
  */
 public class TcpClient {
 
-    public static void send(MulticastSocket ms, Socket socket) throws IOException {
+    public static void send(final MulticastSocket ms, Socket socket) throws IOException {
         byte[] buffer = new byte[8192];
-        System.out.println("[socket, socket] receiving");
+        System.out.println("TcpClient.send[socket, socket]: receiving");
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (true) {
@@ -25,7 +25,6 @@ public class TcpClient {
             byte[] data = dp.getData();
             int pduType = 255 & data[2];
             PduType pduTypeEnum = PduType.lookup[pduType];
-            ByteBuffer buf = ByteBuffer.wrap(data);
 
             System.out.println(pduTypeEnum);
             System.out.println(dp.getAddress().getHostName()+ ":" + dp.getPort());
@@ -33,6 +32,7 @@ public class TcpClient {
             switch(pduTypeEnum) {
                 case SIGNAL:
                 case TRANSMITTER:
+                    System.out.println("Writing to socket...");
                     socketOutputStream.writeInt(data.length);
                     socketOutputStream.write(data);
                     socketOutputStream.flush();
@@ -41,37 +41,34 @@ public class TcpClient {
         }
     }
 
-    public static void send(MulticastSocket ms, String host, int port) throws IOException {
+    public static void send(final MulticastSocket ms, String host, int port) throws IOException {
         System.out.println("waiting for server: " + host + ":" + port);
 
         //connect to waiting server...
-        Socket socket = new Socket(host, port);
+        final Socket socket = new Socket(host, port);
         System.out.println("[socket, host, port] receiving");
+
+        Thread t = new Thread(() -> {
+            System.out.println("Starting Server Thread...");
+            try {
+                TcpServer.receive(socket, Rebroadcaster.INSTANCE);
+            } catch (IOException ex) {
+                ex.printStackTrace(System.out);
+            }
+        });
+        t.setDaemon(true);
+        t.start();
 
         send(ms, socket);
     }
 
+    public static MulticastSocket ms;
+
     public static void main(String[] args) throws Exception {
-        InetAddress group = InetAddress.getByName(Sniffer.MCAST_GRP);
-        final MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
-        //uncomment this if you want to listen on non-localhost IP
-        ms.setInterface(InetAddress.getByName("127.0.0.1"));
-        ms.joinGroup(group);
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("closing...");
-            try {
-                ms.leaveGroup(group);
-                ms.close();
-            } catch(IOException ex) {
-                ex.printStackTrace(System.out);
-            }
-        }));
-
         if(args.length > 0) {
             while(true) {
                 try {
-                    send(ms, args[0], TcpServer.TCP_PORT);
+                    send(Rebroadcaster.INSTANCE.getSocket(), args[0], TcpServer.TCP_PORT);
                 } catch(IOException ex) {
                     ex.printStackTrace(System.out);
                 }

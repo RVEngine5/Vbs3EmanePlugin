@@ -80,13 +80,8 @@ public class TcpServer {
     public static void main(String argv[]) throws IOException {
         ServerSocket socket = new ServerSocket(TCP_PORT);
 
-        //final RawAudioPlay rap = new RawAudioPlay();
-        final Rebroadcaster rebroadcaster = new Rebroadcaster();
-
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("closing...");
-            //rap.close();
-            rebroadcaster.close();
             try {
                 socket.close();
             } catch(IOException ex) {
@@ -102,21 +97,16 @@ public class TcpServer {
                 final Socket connectionSocket = socket.accept();
                 System.out.println("receiving...");
                 Thread t = new Thread(() -> {
+                    System.out.println("Starting client thread");
                     try {
-                        InetAddress group = InetAddress.getByName(Sniffer.MCAST_GRP);
-                        final MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
-                        //uncomment this if you want to listen on non-localhost IP
-                        ms.setInterface(InetAddress.getByName("127.0.0.1"));
-                        ms.joinGroup(group);
-
-                        TcpClient.send(ms, connectionSocket);
+                        TcpClient.send(Rebroadcaster.INSTANCE.getSocket(), connectionSocket);
                     } catch (IOException ex) {
                         ex.printStackTrace(System.out);
                     }
                 });
                 t.setDaemon(true);
                 t.start();
-                receive(connectionSocket, rebroadcaster);
+                receive(connectionSocket, Rebroadcaster.INSTANCE);
             } catch (IOException ex) {
                 ex.printStackTrace(System.out);
             }

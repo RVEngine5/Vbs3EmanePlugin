@@ -12,16 +12,30 @@ import java.net.UnknownHostException;
 public class Rebroadcaster {
     private MulticastSocket socket;
     private InetAddress group;
+    public static final Rebroadcaster INSTANCE;
 
-    public Rebroadcaster() throws UnknownHostException, IOException{
+    static {
+        Rebroadcaster inst = null;
+        try {
+            inst = new Rebroadcaster();
+        } catch(IOException ex) {}
+        INSTANCE = inst;
+    }
+
+    private Rebroadcaster() throws UnknownHostException, IOException{
         group = InetAddress.getByName(Sniffer.MCAST_GRP);
         socket = new MulticastSocket(Sniffer.MCAST_PORT);
-//        socket.joinGroup(group);
+        socket.setLoopbackMode(false);
+        socket.joinGroup(group);
     }
 
     public void send(byte[] buf) throws IOException {
         DatagramPacket packet = new DatagramPacket(buf, buf.length, group, Sniffer.MCAST_PORT);
         socket.send(packet);
+    }
+
+    public MulticastSocket getSocket() {
+        return socket;
     }
 
     public void close() {
