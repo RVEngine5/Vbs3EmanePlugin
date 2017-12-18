@@ -14,6 +14,13 @@ import edu.nps.moves.disenum.PduType;
  */
 public class TcpClient {
 
+    /**
+     * Send data from the multicast socket to the tcp socket.
+     *
+     * @param ms the multicast socket
+     * @param socket the tcp socket
+     * @throws IOException any error from read/writing socket data
+     */
     public static void send(final MulticastSocket ms, Socket socket) throws IOException {
         byte[] buffer = new byte[8192];
         System.out.println("TcpClient.send[socket, socket]: receiving");
@@ -45,13 +52,11 @@ public class TcpClient {
     }
 
     /**
-     * TODO: when connection is lost to socket in the new thread, try to kill everything.
-     * What is happening is that the client doesn't try to re-connect to a new server instance if the server
-     * stops and then re-starts.
+     * Send data from the multicast socket to the specified host/port pair.
      *
-     * @param host
-     * @param port
-     * @throws IOException
+     * @param host to send to
+     * @param port port to connect to
+     * @throws IOException any error reading/writing to socket
      */
     public static void send(String host, int port) throws IOException {
         System.out.println("waiting for server: " + host + ":" + port);
@@ -79,7 +84,12 @@ public class TcpClient {
         send(Rebroadcaster.INSTANCE.getSocket(), socket);
     }
 
-    public static void main(String[] args) throws Exception {
+    /**
+     * Entry point for a client
+     *
+     * @param args expects 1 argument that is the server to connect to.
+     */
+    public static void main(String[] args) {
         if(args.length > 0) {
             while(true) {
                 try {

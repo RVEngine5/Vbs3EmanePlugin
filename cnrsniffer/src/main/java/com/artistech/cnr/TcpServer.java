@@ -24,6 +24,13 @@ public class TcpServer {
 
     public static final int TCP_PORT = 6789;
 
+    /**
+     * Receive data from the socket and re-broadcast it on the local multicast channel.
+     * 
+     * @param connectionSocket
+     * @param rebroadcaster
+     * @throws IOException
+     */
     public static void receive(Socket connectionSocket, Rebroadcaster rebroadcaster) throws IOException {
         while (true) {
             DataInputStream dIn = new DataInputStream(connectionSocket.getInputStream());
@@ -39,9 +46,6 @@ public class TcpServer {
 
             if(message != null) {
                 byte[] data = message;
-//                int pduType = 255 & data[2];
-//                PduType pduTypeEnum = PduType.lookup[pduType];
-//                ByteBuffer buf = ByteBuffer.wrap(data);
 
                 try {
                     System.out.println("Rebroadcasting on multicast channel");
@@ -49,35 +53,16 @@ public class TcpServer {
                 } catch(IOException ex) {
                     ex.printStackTrace(System.out);
                 }
-
-//                //examine packet data and play audio
-//                System.out.println(pduTypeEnum);
-//
-//                switch (pduTypeEnum) {
-//                    case SIGNAL:
-//                        SignalPdu spdu = new SignalPdu();
-//                        spdu.unmarshal(buf);
-//
-//                        Sniffer.printInfo(spdu);
-//                        try (ByteArrayOutputStream baos = Sniffer.getData(spdu)) {
-//                            //audio is: 16-bit Linear PCM 2's complement, Big Endian (4) <- ENCODING SCHEME 4
-//                            rap.play(baos.toByteArray());
-//                        }
-//                        break;
-//                    case TRANSMITTER:
-//                        TransmitterPdu tpdu = new TransmitterPdu();
-//                        tpdu.unmarshal(buf);
-//                        Sniffer.printInfo(tpdu);
-//
-//                        break;
-//                    default:
-//                        System.out.println("Unknown Type:" + pduTypeEnum);
-//                        break;
-//                }
             }
         }
     }
 
+    /**
+     * Start the server
+     *
+     * @param argv no arguments expected
+     * @throws IOException Exception creating a server socket
+     */
     public static void main(String argv[]) throws IOException {
         ServerSocket socket = new ServerSocket(TCP_PORT);
 
