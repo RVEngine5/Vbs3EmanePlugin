@@ -26,7 +26,7 @@ void s_free(void *data, void *hint) {
 }
 
 void s_recv(zmq::socket_t &socket, zmq::message_t &msg) {
-	if (socket.recv(&msg) < 0) {
+	if (!socket.recv(&msg)) {
 		fprintf(stderr, "ERROR: Receiving data\n");
 	}
 }
@@ -72,9 +72,9 @@ struct sockaddr_in setup_addr(const char *ip_addr, int port) {
 	return addr;
 }
 
-int listen_mc(struct sockaddr_in addr, std::string mcast_addr) {
+SOCKET listen_mc(struct sockaddr_in addr, std::string mcast_addr) {
 	struct ip_mreq mreq;
-	int fd;
+	SOCKET fd;
 	u_int yes = 1;
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -114,15 +114,15 @@ const char *server_addr = NULL;
 const char *multicast_group = NULL;
 bool verbose = false;
 
-int client_mc_socket(const char* addr) {
-	int fd;
+SOCKET client_mc_socket() {
+	SOCKET fd;
 	int ttl = 1;
 	int allow_loop = 0;
 	//struct in_addr iaddr;
 	struct sockaddr_in iaddr;
 
 	//iaddr.s_addr = inet_pton("226.0.0.1");
-	inet_pton(AF_INET, addr, &(iaddr.sin_addr));
+	inet_pton(AF_INET, multicast_group, &(iaddr.sin_addr));
 
 	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		//perror("socket");
@@ -171,31 +171,55 @@ char *gen_zmq_addr(const char *ipaddr, int port) {
 	return zmq_addr;
 }
 
-//
-//in_addr doit()
-//{
-//	char ac[80];
-//	if (gethostname(ac, sizeof(ac)) == SOCKET_ERROR) {
-//		//cerr << "Error " << WSAGetLastError() <<
-//		//	" when getting local host name." << endl;
-//		//return 1;
-//	}
-//	//cout << "Host name is " << ac << "." << endl;
-//
-//	struct hostent *phe = getaddrinfo(ac);
-//	if (phe == 0) {
-//		//cerr << "Yow! Bad host lookup." << endl;
-//		return in_addr();
-//	}
-//
-//	for (int i = 0; phe->h_addr_list[i] != 0; ++i) {
-//		struct in_addr addr;
-//		memcpy(&addr, phe->h_addr_list[i], sizeof(struct in_addr));
-//		//cout << "Address " << i << ": " << inet_ntoa(addr) << endl;
-//	}
-//
-//	return in_addr();
-//}
+void *start_sub(void *args) {
+	zmq::context_t context(1);
+	zmq::socket_t subscriber(context, ZMQ_SUB);
+	zmq::socket_t syncclient(context, ZMQ_REQ);
+
+	struct sockaddr_in mcast_addr;
+	socklen_t socklen = sizeof(mcast_addr);
+	SOCKET mcast_fd;
+	char *client_addr;
+
+	client_addr = gen_zmq_addr((char *)args, 5556);
+	subscriber.connect(client_addr);
+	subscriber.setsockopt(ZMQ_SUBSCRIBE, "", 0);
+	free(client_addr);
+
+	mcast_fd = client_mc_socket();
+
+	//  Handshake socket
+	client_addr = gen_zmq_addr((char *)args, 5562);
+	syncclient.connect(client_addr);
+	free(client_addr);
+
+	free(args);
+
+	// handshake
+	s_send_empty(syncclient);
+	s_recv_empty(syncclient);
+
+	while (1) {
+		zmq::message_t msg(MAX_BUFSIZE);
+		s_recv(subscriber, msg);
+
+		mcast_tunnel_msg_t *tunnel_msg = (mcast_tunnel_msg_t *)msg.data();
+		tunnel_msg->port = ntohs(tunnel_msg->port);
+		tunnel_msg->buflen = ntohl(tunnel_msg->buflen);
+		tunnel_msg->buf[tunnel_msg->buflen] = '\0';
+
+		mcast_addr = setup_addr(multicast_group, tunnel_msg->port);
+
+		if (verbose) {
+			printf("Received msg of size %d over tunnel", tunnel_msg->buflen);
+		}
+
+		//send the message
+		if (sendto(mcast_fd, tunnel_msg->buf, tunnel_msg->buflen, 0, (struct sockaddr *)&mcast_addr, socklen) < 0) {
+			//perror("sendto()");
+		}
+	}
+}
 
 void *start_pub(void *args) {
 	zmq::context_t context(1);
@@ -203,7 +227,7 @@ void *start_pub(void *args) {
 //	zmq::socket_t syncservice(context, ZMQ_REP);
 
 	std::list<uint16_t> *mcast_ports = (std::list<uint16_t> *)args;
-	int num_ports = mcast_ports->size();
+	size_t num_ports = mcast_ports->size();
 	zmq_pollitem_t* items = new zmq_pollitem_t[num_ports];
 
 	mcast_tunnel_msg_t tunnel_msg;
@@ -212,30 +236,31 @@ void *start_pub(void *args) {
 	struct in_addr server_inaddr;
 	socklen_t socklen = sizeof(addr);
 
-	char *pub_addr, *rep_addr;
+	char *pub_addr;
+	//char *rep_addr;
 	int ret;
 	int i;
 
-	//char szHostName[255];
-	//gethostname(szHostName, 255);
-	//struct hostent *host_entry;
-	//host_entry = getaddrinfo();// (szHostName);
-	struct addrinfo hints, *infoptr = NULL;
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
+	////char szHostName[255];
+	////gethostname(szHostName, 255);
+	////struct hostent *host_entry;
+	////host_entry = getaddrinfo();// (szHostName);
+	//struct addrinfo hints, *infoptr = NULL;
+	//hints.ai_family = AF_UNSPEC;
+	//hints.ai_socktype = SOCK_STREAM;
+	//hints.ai_protocol = IPPROTO_TCP;
 
-	DWORD dwRetval = getaddrinfo("localhost", NULL, &hints, &infoptr);
-	if (dwRetval != 0) {
-		printf("getaddrinfo failed with error: %d\n", dwRetval);
-		exit(1);
-	}
-	sockaddr_in *sockaddr_ipv4 = (struct sockaddr_in *) infoptr->ai_addr;
-	char* ans = new char[80];
-	inet_ntop(AF_INET, (void *)infoptr, ans, 80);
+	//DWORD dwRetval = getaddrinfo("localhost", NULL, &hints, &infoptr);
+	//if (dwRetval != 0) {
+	//	printf("getaddrinfo failed with error: %d\n", dwRetval);
+	//	exit(1);
+	//}
+	//sockaddr_in *sockaddr_ipv4 = (struct sockaddr_in *) infoptr->ai_addr;
+	//char* ans = new char[80];
+	//inet_ntop(AF_INET, (void *)infoptr, ans, 80);
 
-	printf("IPv4 address %s\n", ans);
-	delete[] ans;
+	//printf("IPv4 address %s\n", ans);
+	//delete[] ans;
 
 	//char * szLocalIP;
 	//szLocalIP = inet_ntoa(*(struct in_addr *)*host_entry->h_addr_list);
@@ -344,10 +369,10 @@ void *start_pub(void *args) {
 int main(int argc, char** argv)
 {
 	WSADATA             wsd;
-	SOCKET              s;
+	//SOCKET              s;
 	struct addrinfo    *resmulti = NULL, *resbind = NULL, *resif = NULL;
 	char               *buf = NULL;
-	int                 rc, i = 0;
+	//int                 rc, i = 0;
 
 	verbose = true;
 
