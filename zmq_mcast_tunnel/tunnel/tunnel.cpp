@@ -174,7 +174,7 @@ char *gen_zmq_addr(const char *ipaddr, int port) {
 void *start_sub(void *args) {
 	zmq::context_t context(1);
 	zmq::socket_t subscriber(context, ZMQ_SUB);
-	zmq::socket_t syncclient(context, ZMQ_REQ);
+	//zmq::socket_t syncclient(context, ZMQ_REQ);
 
 	struct sockaddr_in mcast_addr;
 	socklen_t socklen = sizeof(mcast_addr);
@@ -184,20 +184,22 @@ void *start_sub(void *args) {
 	client_addr = gen_zmq_addr((char *)args, 5556);
 	subscriber.connect(client_addr);
 	subscriber.setsockopt(ZMQ_SUBSCRIBE, "", 0);
-	free(client_addr);
+	//free(client_addr);
 
 	mcast_fd = client_mc_socket();
 
-	//  Handshake socket
-	client_addr = gen_zmq_addr((char *)args, 5562);
-	syncclient.connect(client_addr);
-	free(client_addr);
+	////  Handshake socket
+	//client_addr = gen_zmq_addr((char *)args, 5562);
+	//syncclient.connect(client_addr);
+	//free(client_addr);
 
-	free(args);
+	//free(args);
 
 	// handshake
-	s_send_empty(syncclient);
-	s_recv_empty(syncclient);
+	//s_send_empty(syncclient);
+	//s_recv_empty(syncclient);
+
+	mcast_addr = setup_addr(multicast_group, 3000);
 
 	while (1) {
 		zmq::message_t msg(MAX_BUFSIZE);
@@ -208,10 +210,8 @@ void *start_sub(void *args) {
 		tunnel_msg->buflen = ntohl(tunnel_msg->buflen);
 		tunnel_msg->buf[tunnel_msg->buflen] = '\0';
 
-		mcast_addr = setup_addr(multicast_group, tunnel_msg->port);
-
 		if (verbose) {
-			printf("Received msg of size %d over tunnel", tunnel_msg->buflen);
+			printf("Received msg of size %d over tunnel\n", tunnel_msg->buflen);
 		}
 
 		//send the message
@@ -387,7 +387,8 @@ int main(int argc, char** argv)
 	std::list<uint16_t> *mcast_ports = new std::list<uint16_t>;
 	mcast_ports->push_back(3000);
 	multicast_group = "226.0.1.1";
-	start_pub(mcast_ports);
+	//start_pub(mcast_ports);
+	start_sub((void *) "192.168.0.62");
 
 	WSACleanup();
 	return 0;
