@@ -1,11 +1,8 @@
 package com.artistech.cnr;
 
-import org.apache.commons.io.IOUtils;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.ConnectException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -28,7 +25,14 @@ public class Bridge implements Runnable {
 
         public void run() {
             try {
-                IOUtils.copy(is, os);
+
+                byte[] data = new byte[16384];
+
+                while(true) {
+                    int len = is.read(data, 0, data.length);
+                    os.write(data, 0, len);
+                    os.flush();
+                }
             } catch (IOException ex) {
                 ex.printStackTrace(System.out);
             }
@@ -74,6 +78,7 @@ public class Bridge implements Runnable {
     public void run() {
         t1.start();
         t2.start();
+        System.out.println("Starting Server...");
 
         try {
             t1.join();
