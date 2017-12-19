@@ -91,10 +91,8 @@ public class TcpServer {
             }
         }));
 
-
         System.out.println("waiting for client...");
-        boolean cont = true;
-        while(cont) {
+        while(true) {
             try {
                 final Socket connectionSocket = socket.accept();
                 System.out.println("receiving...");
@@ -113,7 +111,5 @@ public class TcpServer {
                 ex.printStackTrace(System.out);
             }
         }
-
-
     }
 }
