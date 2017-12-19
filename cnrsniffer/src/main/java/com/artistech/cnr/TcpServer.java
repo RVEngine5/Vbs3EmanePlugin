@@ -1,9 +1,8 @@
 package com.artistech.cnr;
 
-import edu.nps.moves.dis.OneByteChunk;
 import edu.nps.moves.dis.SignalPdu;
 import edu.nps.moves.disenum.PduType;
-import edu.nps.moves.dismobile.TransmitterPdu;
+import edu.nps.moves.dis.TransmitterPdu;
 
 import java.io.*;
 import java.net.InetAddress;

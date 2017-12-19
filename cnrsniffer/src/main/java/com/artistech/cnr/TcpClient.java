@@ -1,16 +1,14 @@
 package com.artistech.cnr;
 
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
-import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import edu.nps.moves.disenum.PduType;
-import edu.nps.moves.dismobile.SignalPdu;
-import edu.nps.moves.dismobile.TransmitterPdu;
+import edu.nps.moves.dis.SignalPdu;
+import edu.nps.moves.dis.TransmitterPdu;
 
 /**
  * Listens for multi-cast data from CNR to send/stream to a listening server.
@@ -40,39 +38,39 @@ public class TcpClient {
             PduType pduTypeEnum = PduType.lookup[pduType];
             ByteBuffer bb = ByteBuffer.wrap(data);
 
-            //if(dp.getAddress().getHostName().equals("127.0.0.1")) {
-                System.out.println(pduTypeEnum);
-                System.out.println(dp.getAddress().getHostName() + ":" + dp.getPort());
+            System.out.println(pduTypeEnum);
+            System.out.println(dp.getAddress().getHostName() + ":" + dp.getPort());
 
-                boolean send = true;
-                switch (pduTypeEnum) {
-                    case TRANSMITTER:
-                        TransmitterPdu tpdu = new TransmitterPdu();
-                        tpdu.unmarshal(bb);
-                        if(TcpServer.SENT.contains(tpdu.getTimestamp())) {
-                            TcpServer.SENT.remove(tpdu.getTimestamp());
-                            send = false;
-                        }
-                        break;
-                    case SIGNAL:
-                        SignalPdu spdu = new SignalPdu();
-                        spdu.unmarshal(bb);
-                        if(TcpServer.SENT.contains(spdu.getTimestamp())) {
-                            TcpServer.SENT.remove(spdu.getTimestamp());
-                            send = false;
-                        }
-                        break;
-                    default:
+            boolean send = true;
+            switch (pduTypeEnum) {
+                case TRANSMITTER:
+                    TransmitterPdu tpdu = new TransmitterPdu();
+                    tpdu.unmarshal(bb);
+                    if(TcpServer.SENT.contains(tpdu.getTimestamp())) {
+                        TcpServer.SENT.remove(tpdu.getTimestamp());
                         send = false;
-                        break;
-                }
-                if(send) {
-                    System.out.println("Writing to socket...");
-                    socketOutputStream.writeInt(data.length);
-                    socketOutputStream.write(data);
-                    socketOutputStream.flush();
-                }
-            //}
+                    }
+                    break;
+                case SIGNAL:
+                    SignalPdu spdu = new SignalPdu();
+                    spdu.unmarshal(bb);
+                    if(TcpServer.SENT.contains(spdu.getTimestamp())) {
+                        TcpServer.SENT.remove(spdu.getTimestamp());
+                        send = false;
+                    }
+                    break;
+                default:
+                    send = false;
+                    break;
+            }
+            if(send) {
+                System.out.println("Writing to socket...");
+                socketOutputStream.writeInt(data.length);
+                socketOutputStream.write(data);
+                socketOutputStream.flush();
+            } else {
+                System.out.println("Found Sent Packet");
+            }
         }
     }
 

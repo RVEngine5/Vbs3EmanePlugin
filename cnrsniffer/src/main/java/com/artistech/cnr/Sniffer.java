@@ -11,7 +11,7 @@ import java.util.List;
 
 import edu.nps.moves.dis.OneByteChunk;
 import edu.nps.moves.disenum.PduType;
-import edu.nps.moves.dismobile.TransmitterPdu;
+import edu.nps.moves.dis.TransmitterPdu;
 import edu.nps.moves.dis.SignalPdu;
 
 /**
