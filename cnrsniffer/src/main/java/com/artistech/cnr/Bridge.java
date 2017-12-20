@@ -131,9 +131,13 @@ public class Bridge implements Runnable {
     }
 
     /**
-     * Expects an argument of an IP address to connect to.
+     * Expects an argument of an IP address pair to bind.
+     *
      * Starts a server, once a client connects to the server attempts to connect to the specified host.
      * Once the specified host is connected, the bridge thread is started.
+     *
+     * Allows for multiple bridges to be made to the same host port.  This will allow one instance to run where
+     * EMANE is and allow routing to XCN IP addresses.
      *
      * The app will handle broken connections by resetting and starting again.
      *
@@ -142,25 +146,41 @@ public class Bridge implements Runnable {
      */
     public static void main(String[] args) throws Exception {
 
-        if(args.length > 0) {
-            Bridge b = null;
+        BridgeDemux bd = new BridgeDemux();
+        for(String arg : args) {
+            String[] sp = arg.split(":");
+            if(sp.length == 2) {
+                BridgePair pair = new BridgePair(sp[0], sp[1]);
+                bd.addPair(pair);
+            }
+        }
+
+        if(!bd.getPairs().isEmpty()) {
+            ServerSocket ss = new ServerSocket(TcpServer.TCP_PORT);
             while (true) {
-                try {
-                    System.out.println("Starting Server...");
-                    ServerSocket ss = new ServerSocket(TcpServer.TCP_PORT);
-                    Socket client = ss.accept();
-                    System.out.println("Client Connected...");
+                System.out.println("Starting Server...");
+                Socket client = ss.accept();
+                System.out.println("Client Connected...");
 
-                    System.out.println("Connecting to " + args[0]);
-                    final Socket server = new Socket(args[0], TcpServer.TCP_PORT);
+                if(bd.hasCnr(client.getInetAddress().getHostAddress())) {
+                    String emane = bd.getEmane(client.getInetAddress().getHostAddress());
+                    Thread t =  new Thread(() -> {
+                        Bridge b = null;
+                        try {
+                            System.out.println("Connecting to " + emane);
+                            final Socket server = new Socket(emane, TcpServer.TCP_PORT);
 
-                    System.out.println("Starting Bridge...");
-                    b = new Bridge(client, server);
-                    b.run();
-                } catch (IOException ex) {
-                    if (b != null) {
-                        b.halt();
-                    }
+                            System.out.println("Starting Bridge...");
+                            b = new Bridge(client, server);
+                            b.run();
+                        } catch (IOException ex) {
+                            if (b != null) {
+                                b.halt();
+                            }
+                        }
+                    });
+                    t.setDaemon(true);
+                    t.start();
                 }
             }
         }
