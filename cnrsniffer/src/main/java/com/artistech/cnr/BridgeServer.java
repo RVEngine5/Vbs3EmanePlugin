@@ -64,12 +64,12 @@ public class BridgeServer {
                     //check for existing...
                     if(pairedIp != null) {
                         if (SOCKETS.containsKey(pairedIp)) {
+                            final Socket pairedSocket = SOCKETS.get(pairedIpFinal);
+                            SOCKETS.remove(pairedIpFinal);
+
                             Thread t = new Thread(() -> {
-                                Socket pairedSocket = SOCKETS.get(pairedIpFinal);
-                                SOCKETS.remove(pairedIpFinal);
-                                Bridge b = null;
                                 System.out.println("Starting Bridge: " + ip + " to " + pairedIpFinal);
-                                b = new Bridge(client, pairedSocket);
+                                Bridge b = new Bridge(client, pairedSocket);
                                 b.run();
                                 b.halt();
                             });
