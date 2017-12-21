@@ -118,7 +118,7 @@ public class TcpClient {
                 try {
                     send(args[0], TcpServer.TCP_PORT);
                 } catch(IOException ex) {
-                    ex.printStackTrace(System.out);
+//                    ex.printStackTrace(System.out);
                 }
             }
         }
