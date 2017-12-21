@@ -120,6 +120,8 @@ public class Bridge implements Runnable {
             t2.join();
         } catch (InterruptedException ex) {
         }
+
+        halt();
     }
 
     /**
