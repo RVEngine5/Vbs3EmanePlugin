@@ -24,6 +24,13 @@ public class Rebroadcaster {
         INSTANCE = inst;
     }
 
+    public void resetSocket() throws IOException {
+        socket.close();
+        socket = new MulticastSocket(Sniffer.MCAST_PORT);
+        socket.setLoopbackMode(false);
+        socket.joinGroup(group);
+    }
+
     /**
      * Utilize a singleton of rebroadcaster to reduce likelyhood of feedback.
      *

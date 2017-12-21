@@ -100,6 +100,11 @@ public class TcpClient {
             } catch(IOException ex) {
                 ex.printStackTrace(System.out);
             }
+            try {
+                Rebroadcaster.INSTANCE.resetSocket();
+            } catch(IOException ex) {
+                ex.printStackTrace(System.out);
+            }
         });
         t.setDaemon(true);
         t.start();
