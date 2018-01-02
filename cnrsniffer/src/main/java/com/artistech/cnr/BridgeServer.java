@@ -68,6 +68,7 @@ public class BridgeServer {
 
                     //check for existing...
                     if(pairedIp != null) {
+                        found = true;
                         if (SOCKETS.containsKey(pairedIp)) {
                             final Socket pairedSocket = SOCKETS.get(pairedIpFinal);
                             SOCKETS.remove(pairedIpFinal);
@@ -78,19 +79,18 @@ public class BridgeServer {
                                 b.run();
                                 b.halt();
                             });
-                            found = true;
                             t.setDaemon(true);
                             t.start();
                         } else {
-                            found = true;
                             //paired connection not yet present; store and wait
                             System.out.println("Waiting for paired IP: " + ip + " to " + pairedIpFinal);
                             SOCKETS.put(ip, client);
                         }
-                    } else {
-                        System.out.println("Not Configured: " + ip);
-                        client.close();
                     }
+                }
+                if (!found) {
+                    System.out.println("Not Configured: " + ip);
+                    client.close();
                 }
             }
         }
