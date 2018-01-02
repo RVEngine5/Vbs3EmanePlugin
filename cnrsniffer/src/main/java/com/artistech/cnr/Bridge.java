@@ -173,6 +173,7 @@ public class Bridge implements Runnable {
     /**
      * Start each thread and wait for each thread to finish.
      */
+    @Override
     public void run() {
         t1.start();
         t2.start();
@@ -209,7 +210,7 @@ public class Bridge implements Runnable {
      * @param args
      * @throws Exception
      */
-    public static void main(String[] args) throws Exception {
+    private static void main(String[] args) throws Exception {
 
         BridgeDemux bd = new BridgeDemux();
         for(String arg : args) {

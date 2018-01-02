@@ -71,7 +71,7 @@ public class Sniffer {
         return baos;
     }
 
-    public static void main(String[] args) throws Exception {
+    private static void main(String[] args) throws Exception {
         InetAddress group = InetAddress.getByName(MCAST_GRP);
         final MulticastSocket ms = new MulticastSocket(MCAST_PORT);
 //        ms.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));

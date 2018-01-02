@@ -79,7 +79,7 @@ public class TcpServer {
      * @param argv no arguments expected
      * @throws IOException Exception creating a server socket
      */
-    public static void main(String argv[]) throws IOException {
+    private static void main(String argv[]) throws IOException {
         ServerSocket socket = new ServerSocket(TCP_PORT);
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
