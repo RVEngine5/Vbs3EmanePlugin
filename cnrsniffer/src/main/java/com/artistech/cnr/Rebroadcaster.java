@@ -10,7 +10,7 @@ import java.net.MulticastSocket;
  */
 public class Rebroadcaster {
     private MulticastSocket socket;
-    private InetAddress group;
+    private final InetAddress group;
     public static final Rebroadcaster INSTANCE;
 
     /**
@@ -25,8 +25,17 @@ public class Rebroadcaster {
     }
 
     public void resetSocket() throws IOException {
-        socket.close();
+        resetSocket(true);
+    }
+
+    public void resetSocket(boolean localOnly) throws IOException {
+        if(socket != null) {
+            socket.close();
+        }
         socket = new MulticastSocket(Sniffer.MCAST_PORT);
+        if(!localOnly) {
+            socket.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
+        }
         socket.setLoopbackMode(false);
         socket.joinGroup(group);
     }
@@ -38,9 +47,7 @@ public class Rebroadcaster {
      */
     private Rebroadcaster() throws IOException{
         group = InetAddress.getByName(Sniffer.MCAST_GRP);
-        socket = new MulticastSocket(Sniffer.MCAST_PORT);
-        socket.setLoopbackMode(false);
-        socket.joinGroup(group);
+        resetSocket(true);
     }
 
     /**

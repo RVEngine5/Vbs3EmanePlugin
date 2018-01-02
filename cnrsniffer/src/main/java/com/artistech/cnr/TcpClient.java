@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import edu.nps.moves.disenum.PduType;
 import edu.nps.moves.dis.SignalPdu;
 import edu.nps.moves.dis.TransmitterPdu;
+import org.apache.commons.cli.*;
 
 /**
  * Listens for multi-cast data from CNR to send/stream to a listening server.
@@ -118,14 +119,50 @@ public class TcpClient {
      * @param args expects 1 argument that is the server to connect to.
      */
     public static void main(String[] args) {
-        if(args.length > 0) {
-            while(true) {
+        Options opts = new Options();
+        Option opt = Option.builder("server").required().numberOfArgs(1).build();
+        opts.addOption(opt);
+        opts.addOption("port", true, "Bridge Server port to connect to.");
+        opts.addOption("broadcastNetwork","If multicast should broadcast over network.");
+        opts.addOption("help","Help");
+
+        CommandLineParser parser = new DefaultParser();
+        try {
+            int port = TcpServer.TCP_PORT;
+            CommandLine line = parser.parse(opts, args);
+            if(line.hasOption("help")) {
+                HelpFormatter formatter = new HelpFormatter();
+                formatter.printHelp("cnr-sniffer", opts, true);
+                System.exit(0);
+            }
+
+            if(line.hasOption("broadcastNetwork")) {
                 try {
-                    send(args[0], TcpServer.TCP_PORT);
+                    Rebroadcaster.INSTANCE.resetSocket(false);
                 } catch(IOException ex) {
-//                    ex.printStackTrace(System.out);
+                    ex.printStackTrace(System.out);
                 }
             }
+            if(line.hasOption("port")) {
+                port = Integer.parseInt(line.getOptionValue("port"));
+            }
+
+            if(!line.hasOption("server")) {
+                System.out.println("Server value must be specified.");
+            } else {
+                if(args.length > 0) {
+                    while(true) {
+                        try {
+                            send(line.getOptionValue("server"), port);
+                        } catch(IOException ex) {
+//                    ex.printStackTrace(System.out);
+                        }
+                    }
+                }
+            }
+        } catch (ParseException pe) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("cnr-sniffer", opts, true);
         }
     }
 }
