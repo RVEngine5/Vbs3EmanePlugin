@@ -3,6 +3,7 @@ package com.artistech.cnr;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.MulticastSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
@@ -23,7 +24,7 @@ public class TcpClient {
      * @param socket the tcp socket
      * @throws IOException any error from read/writing socket data
      */
-    public static void send(final MulticastSocket ms, Socket socket) throws IOException {
+    public static void send(final DatagramSocket ms, Socket socket) throws IOException {
         byte[] buffer = new byte[8192];
         System.out.println("TcpClient.send[socket, socket]: receiving");
 
@@ -123,7 +124,7 @@ public class TcpClient {
         Option opt = Option.builder("server").required().numberOfArgs(1).build();
         opts.addOption(opt);
         opts.addOption("port", true, "Bridge Server port to connect to.");
-        opts.addOption("broadcastNetwork","If multicast should broadcast over network.");
+        opts.addOption("broadcast","If broadcasting instead of multicasting.");
         opts.addOption("help","Help");
 
         CommandLineParser parser = new DefaultParser();
@@ -136,7 +137,7 @@ public class TcpClient {
                 System.exit(0);
             }
 
-            if(line.hasOption("broadcastNetwork")) {
+            if(line.hasOption("broadcast")) {
                 try {
                     Rebroadcaster.INSTANCE.resetSocket(false);
                 } catch(IOException ex) {

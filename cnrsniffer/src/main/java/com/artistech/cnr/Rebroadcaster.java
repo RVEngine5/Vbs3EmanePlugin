@@ -2,6 +2,7 @@ package com.artistech.cnr;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
@@ -9,8 +10,8 @@ import java.net.MulticastSocket;
  * Rebroadcast data receivied via TCP as UDP
  */
 public class Rebroadcaster {
-    private MulticastSocket socket;
-    private final InetAddress group;
+    private DatagramSocket socket;
+    private InetAddress group;
     public static final Rebroadcaster INSTANCE;
 
     /**
@@ -28,16 +29,24 @@ public class Rebroadcaster {
         resetSocket(true);
     }
 
-    public void resetSocket(boolean localOnly) throws IOException {
+    public void resetSocket(boolean multicast) throws IOException {
         if(socket != null) {
             socket.close();
         }
-        socket = new MulticastSocket(Sniffer.MCAST_PORT);
-        if(!localOnly) {
-            socket.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
+        if(multicast) {
+            group = InetAddress.getByName(Sniffer.MCAST_GRP);
+            MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
+            if (!multicast) {
+                ms.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
+            }
+            ms.setLoopbackMode(false);
+            ms.joinGroup(group);
+            socket = ms;
+        } else {
+            group = InetAddress.getByName("255.255.255.255");
+            socket = new DatagramSocket();
+            socket.setBroadcast(true);
         }
-        socket.setLoopbackMode(false);
-        socket.joinGroup(group);
     }
 
     /**
@@ -46,7 +55,6 @@ public class Rebroadcaster {
      * @throws IOException
      */
     private Rebroadcaster() throws IOException{
-        group = InetAddress.getByName(Sniffer.MCAST_GRP);
         resetSocket(true);
     }
 
@@ -66,7 +74,7 @@ public class Rebroadcaster {
      *
      * @return
      */
-    public MulticastSocket getSocket() {
+    public DatagramSocket getSocket() {
         return socket;
     }
 }

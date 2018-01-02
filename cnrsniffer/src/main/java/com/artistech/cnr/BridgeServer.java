@@ -50,7 +50,12 @@ public class BridgeServer {
                 //check for existing match
                 String ip = client.getInetAddress().getHostAddress();
                 System.out.println("Client Connected: " + ip);
+
+                boolean found = false;
                 for(BridgePair bp : bd.getPairs()) {
+                    if(found) {
+                        continue;
+                    }
                     //get paired IP
                     String pairedIp = null;
                     if(bp.getCnr().equals(ip)) {
@@ -73,9 +78,11 @@ public class BridgeServer {
                                 b.run();
                                 b.halt();
                             });
+                            found = true;
                             t.setDaemon(true);
                             t.start();
                         } else {
+                            found = true;
                             //paired connection not yet present; store and wait
                             System.out.println("Waiting for paired IP: " + ip + " to " + pairedIpFinal);
                             SOCKETS.put(ip, client);
