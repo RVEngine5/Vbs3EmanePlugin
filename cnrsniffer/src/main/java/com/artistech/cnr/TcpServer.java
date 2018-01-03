@@ -12,12 +12,16 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Listens for data from a client that is receiving PDU data.
  * Unpack data from the client and play the audio.
  */
 public class TcpServer {
+
+    private static final Logger LOGGER = Logger.getLogger(TcpServer.class.getName());
 
     public static final List<Long> SENT = new ArrayList<>();
     public static final int TCP_PORT = 6789;
@@ -37,7 +41,7 @@ public class TcpServer {
             int length = dIn.readInt();
             byte[] message = null;
             // read the message
-            if(length>0) {
+            if (length > 0) {
                 message = new byte[length];
                 dIn.readFully(message, 0, message.length);
             }
@@ -46,7 +50,7 @@ public class TcpServer {
             PduType pduTypeEnum = PduType.lookup[pduType];
             ByteBuffer bb = ByteBuffer.wrap(message);
 
-            switch(pduTypeEnum) {
+            switch (pduTypeEnum) {
                 case TRANSMITTER:
                     TransmitterPdu tpdu = new TransmitterPdu();
                     tpdu.unmarshal(bb);
@@ -59,56 +63,15 @@ public class TcpServer {
                     break;
             }
 
-            if(message != null) {
+            if (message != null) {
                 byte[] data = message;
 
                 try {
-                    System.out.println("Rebroadcasting on multicast channel");
+                    Logger.getLogger(TcpServer.class.getName()).log(Level.FINEST, "Rebroadcasting on multicast channel");
                     rebroadcaster.send(data);
-
-                } catch(IOException ex) {
-                    ex.printStackTrace(System.out);
+                } catch (IOException ex) {
+                    LOGGER.log(Level.WARNING, null, ex);
                 }
-            }
-        }
-    }
-
-    /**
-     * Start the server
-     *
-     * @param argv no arguments expected
-     * @throws IOException Exception creating a server socket
-     */
-    private static void main(String argv[]) throws IOException {
-        ServerSocket socket = new ServerSocket(TCP_PORT);
-
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("closing...");
-            try {
-                socket.close();
-            } catch(IOException ex) {
-                ex.printStackTrace(System.out);
-            }
-        }));
-
-        System.out.println("waiting for client...");
-        while(true) {
-            try {
-                final Socket connectionSocket = socket.accept();
-                System.out.println("receiving...");
-                Thread t = new Thread(() -> {
-                    System.out.println("Starting client thread");
-                    try {
-                        TcpClient.send(Rebroadcaster.INSTANCE.getSocket(), connectionSocket);
-                    } catch (IOException ex) {
-                        ex.printStackTrace(System.out);
-                    }
-                });
-                t.setDaemon(true);
-                t.start();
-                receive(connectionSocket, Rebroadcaster.INSTANCE);
-            } catch (IOException ex) {
-                ex.printStackTrace(System.out);
             }
         }
     }

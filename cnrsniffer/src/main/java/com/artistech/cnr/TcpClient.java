@@ -2,11 +2,18 @@ package com.artistech.cnr;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.MulticastSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.logging.Handler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import edu.nps.moves.disenum.PduType;
 import edu.nps.moves.dis.SignalPdu;
 import edu.nps.moves.dis.TransmitterPdu;
@@ -16,6 +23,9 @@ import org.apache.commons.cli.*;
  * Listens for multi-cast data from CNR to send/stream to a listening server.
  */
 public class TcpClient {
+    private static final Logger LOGGER = Logger.getLogger(TcpClient.class.getName());
+
+    public static int BUFFER_SIZE = 8192;
 
     /**
      * Send data from the multicast socket to the tcp socket.
@@ -25,8 +35,8 @@ public class TcpClient {
      * @throws IOException any error from read/writing socket data
      */
     public static void send(final DatagramSocket ms, Socket socket) throws IOException {
-        byte[] buffer = new byte[8192];
-        System.out.println("TcpClient.send[socket, socket]: receiving");
+        byte[] buffer = new byte[BUFFER_SIZE];
+        LOGGER.log(Level.FINE, "TcpClient.send[socket, socket]: receiving");
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (true) {
@@ -40,8 +50,8 @@ public class TcpClient {
             PduType pduTypeEnum = PduType.lookup[pduType];
             ByteBuffer bb = ByteBuffer.wrap(data);
 
-            System.out.println(pduTypeEnum);
-            System.out.println(dp.getAddress().getHostName() + ":" + dp.getPort());
+            LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
+            LOGGER.log(Level.FINEST, "Receive From: {0}:{1}", new Object[]{dp.getAddress().getHostName(), dp.getPort()});
 
             boolean send = true;
             switch (pduTypeEnum) {
@@ -66,12 +76,12 @@ public class TcpClient {
                     break;
             }
             if(send) {
-                System.out.println("Writing to socket...");
+                LOGGER.log(Level.FINEST, "Writing to socket...");
                 socketOutputStream.writeInt(data.length);
                 socketOutputStream.write(data);
                 socketOutputStream.flush();
             } else {
-                System.out.println("Found Sent Packet");
+                LOGGER.log(Level.FINEST, "Found Sent Packet");
             }
         }
     }
@@ -84,28 +94,28 @@ public class TcpClient {
      * @throws IOException any error reading/writing to socket
      */
     public static void send(String host, int port) throws IOException {
-        System.out.println("waiting for server: " + host + ":" + port);
+        LOGGER.log(Level.FINE, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
         final Socket socket = new Socket(host, port);
-        System.out.println("[socket, host, port] sending");
+        LOGGER.log(Level.FINEST, "[socket, host, port] sending");
 
         Thread t = new Thread(() -> {
-            System.out.println("Starting Server Thread...");
+            LOGGER.log(Level.FINE,"Starting Server Thread...");
             try {
                 TcpServer.receive(socket, Rebroadcaster.INSTANCE);
             } catch(IOException ex) {
-                ex.printStackTrace(System.out);
+                LOGGER.log(Level.WARNING, null, ex);
             }
             try {
                 socket.close();
             } catch(IOException ex) {
-                ex.printStackTrace(System.out);
+                LOGGER.log(Level.WARNING, null, ex);
             }
             try {
                 Rebroadcaster.INSTANCE.resetSocket();
             } catch(IOException ex) {
-                ex.printStackTrace(System.out);
+                LOGGER.log(Level.WARNING, null, ex);
             }
         });
         t.setDaemon(true);
@@ -114,17 +124,55 @@ public class TcpClient {
         send(Rebroadcaster.INSTANCE.getSocket(), socket);
     }
 
+
+    public static void setLevel(Level targetLevel) {
+        Logger root = Logger.getLogger("");
+        root.setLevel(targetLevel);
+        for (Handler handler : root.getHandlers()) {
+            handler.setLevel(targetLevel);
+        }
+    }
+
+    public static Set<Level> getAllLevels() throws IllegalAccessException {
+        Class<Level> levelClass = Level.class;
+
+        Set<Level> allLevels = new TreeSet<>(
+                Comparator.comparingInt(Level::intValue));
+
+        for (Field field : levelClass.getDeclaredFields()) {
+            if (field.getType() == Level.class) {
+                allLevels.add((Level) field.get(null));
+            }
+        }
+        return allLevels;
+    }
+
     /**
      * Entry point for a client
      *
      * @param args expects 1 argument that is the server to connect to.
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IllegalAccessException{
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "[%1$tF %1$tT] [%4$-7s] %5$s %n");
+
+//        setLevel(Level.ALL);
+//        LOGGER.log(Level.ALL, "hello");
+//        LOGGER.log(Level.FINEST, "hello");
+//        LOGGER.log(Level.FINER, "hello");
+//        LOGGER.log(Level.FINE, "hello");
+//        LOGGER.log(Level.CONFIG, "hello");
+//        LOGGER.log(Level.INFO, "hello");
+//        LOGGER.log(Level.WARNING, "hello");
+//        LOGGER.log(Level.SEVERE, "hello");
+//        LOGGER.log(Level.OFF, "hello");
+
         Options opts = new Options();
-        Option opt = Option.builder("server").required().numberOfArgs(1).build();
+        Option opt = Option.builder("server").required().numberOfArgs(1).desc("Server to connect to.").build();
         opts.addOption(opt);
         opts.addOption("port", true, "Bridge Server port to connect to.");
         opts.addOption("broadcast","If broadcasting instead of multicasting.");
+        opts.addOption("log", true,"Verbose output.");
         opts.addOption("help","Help");
 
         CommandLineParser parser = new DefaultParser();
@@ -137,11 +185,18 @@ public class TcpClient {
                 System.exit(0);
             }
 
+            if(line.hasOption("log")) {
+                String val = line.getOptionValue("log");
+                Level level = Level.parse(val);
+                setLevel(level);
+                LOGGER.log(level, "Logging Level: {0}", level);
+            }
+
             if(line.hasOption("broadcast")) {
                 try {
                     Rebroadcaster.INSTANCE.resetSocket(false);
                 } catch(IOException ex) {
-                    ex.printStackTrace(System.out);
+                    LOGGER.log(Level.SEVERE, null, ex);
                 }
             }
             if(line.hasOption("port")) {
@@ -149,14 +204,14 @@ public class TcpClient {
             }
 
             if(!line.hasOption("server")) {
-                System.out.println("Server value must be specified.");
+                System.err.println("Server value must be specified.");
             } else {
                 if(args.length > 0) {
                     while(true) {
                         try {
                             send(line.getOptionValue("server"), port);
                         } catch(IOException ex) {
-//                    ex.printStackTrace(System.out);
+                            LOGGER.log(Level.FINEST, null, ex);
                         }
                     }
                 }

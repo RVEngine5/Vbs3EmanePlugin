@@ -8,6 +8,8 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import edu.nps.moves.dis.OneByteChunk;
 import edu.nps.moves.disenum.PduType;
@@ -17,50 +19,51 @@ import edu.nps.moves.dis.SignalPdu;
 /**
  * Test class for receiving multicast data from CNR and playing the audio.
  */
+@Deprecated
 public class Sniffer {
-    public static final int MCAST_PORT = 3000;
-    public static final String MCAST_GRP = "226.0.1.1";
+
+    private static final Logger LOGGER = Logger.getLogger(Sniffer.class.getName());
 
     public static void printInfo(SignalPdu spdu) {
         //this is identical to data pulled form WireShark, so that's good.
         //signal data
-        System.out.println("Data Length: " + spdu.getDataLength());         // Data Length: 2560
-        System.out.println("Sample Rage: " + spdu.getSampleRate());         // 44100 [Hz]
-        System.out.println("Encoding Scheme: " + spdu.getEncodingScheme()); // 4
-        System.out.println("Num Samples: " + spdu.getSamples());            // 160
+        LOGGER.log(Level.INFO, "Data Length: {0}", spdu.getDataLength());         // Data Length: 2560
+        LOGGER.log(Level.INFO, "Sample Rage: {0}", spdu.getSampleRate());         // 44100 [Hz]
+        LOGGER.log(Level.INFO, "Encoding Scheme: {0}", spdu.getEncodingScheme()); // 4
+        LOGGER.log(Level.INFO, "Num Samples: {0}", spdu.getSamples());            // 160
 
-        System.out.println("Radio ID: " + spdu.getRadioId());               // ID: 11761
-        System.out.println("Entity ID: " + spdu.getEntityId().getEntity()); // 0
+        LOGGER.log(Level.INFO, "Radio ID: {0}", spdu.getRadioId());               // ID: 11761
+        LOGGER.log(Level.INFO, "Entity ID: {0}", spdu.getEntityId().getEntity()); // 0
 
         //header data
-        System.out.println("Proto Family: " + spdu.getProtocolFamily());    // 4
-        System.out.println("Proto Version: " + spdu.getProtocolVersion());  // 6
-        System.out.println("Exercise ID: " + spdu.getExerciseID());         //0
-        System.out.println("Time Stamp: " + spdu.getTimestamp());           //
+        LOGGER.log(Level.INFO, "Proto Family: {0}", spdu.getProtocolFamily());    // 4
+        LOGGER.log(Level.INFO, "Proto Version: {0}", spdu.getProtocolVersion());  // 6
+        LOGGER.log(Level.INFO, "Exercise ID: {0}", spdu.getExerciseID());         //0
+        LOGGER.log(Level.INFO, "Time Stamp: {0}", spdu.getTimestamp());           //
     }
 
     public static void printInfo(TransmitterPdu tpdu) {
         //this is identical to data pulled form WireShark, so that's good.
         //signal data
-        System.out.println("Input Source: " + tpdu.getInputSource());
-        System.out.println("Frequency: " + tpdu.getFrequency());
-        System.out.println("Transmit Frequency Bandwidth: " + tpdu.getTransmitFrequencyBandwidth());
+        LOGGER.log(Level.INFO, "Input Source: {0}", tpdu.getInputSource());
+        LOGGER.log(Level.INFO, "Frequency: {0}", tpdu.getFrequency());
+        LOGGER.log(Level.INFO, "Transmit Frequency Bandwidth: {0}", tpdu.getTransmitFrequencyBandwidth());
 
-        System.out.println("Radio ID: " + tpdu.getRadioId());               // ID: 11761
-        System.out.println("Entity ID: " + tpdu.getEntityId().getEntity()); // 0
+        LOGGER.log(Level.INFO, "Radio ID: {0}", tpdu.getRadioId());               // ID: 11761
+        LOGGER.log(Level.INFO, "Entity ID: {0}", tpdu.getEntityId().getEntity()); // 0
 
         //header data
-        System.out.println("Proto Family: " + tpdu.getProtocolFamily());    // 4
-        System.out.println("Proto Version: " + tpdu.getProtocolVersion());  // 6
-        System.out.println("Exercise ID: " + tpdu.getExerciseID());         //0
-        System.out.println("Time Stamp: " + tpdu.getTimestamp());           //
+        LOGGER.log(Level.INFO, "Proto Family: {0}", tpdu.getProtocolFamily());    // 4
+        LOGGER.log(Level.INFO, "Proto Version: {0}", tpdu.getProtocolVersion());  // 6
+        LOGGER.log(Level.INFO, "Exercise ID: {0}", tpdu.getExerciseID());         //0
+        LOGGER.log(Level.INFO, "Time Stamp: {0}", tpdu.getTimestamp());           //
     }
 
     public static ByteArrayOutputStream getData(SignalPdu spdu) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
         List<OneByteChunk> d = spdu.getData();
-        System.out.println(d.size());
+        LOGGER.log(Level.FINEST, "{0}", d.size());
 
         //HACK!!
         int size = 320; //<- this is the desired value, but not sure if it should be hard coded.
@@ -72,23 +75,23 @@ public class Sniffer {
     }
 
     private static void main(String[] args) throws Exception {
-        InetAddress group = InetAddress.getByName(MCAST_GRP);
-        final MulticastSocket ms = new MulticastSocket(MCAST_PORT);
+        InetAddress group = InetAddress.getByName(Rebroadcaster.MCAST_GRP);
+        final MulticastSocket ms = new MulticastSocket(Rebroadcaster.MCAST_PORT);
 //        ms.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
         ms.joinGroup(group);
 
         byte[] buffer = new byte[8192];
-        System.out.println("receiving...");
+        LOGGER.log(Level.FINE, "receiving...");
         final RawAudioPlay rap = new RawAudioPlay();
 
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            System.out.println("closing...");
+            LOGGER.log(Level.FINE, "closing...");
             rap.close();
             try {
                 ms.leaveGroup(group);
                 ms.close();
             } catch(IOException ex) {
-                ex.printStackTrace(System.out);
+                LOGGER.log(Level.WARNING, null, ex);
             }
         }));
 
@@ -100,8 +103,9 @@ public class Sniffer {
             PduType pduTypeEnum = PduType.lookup[pduType];
             ByteBuffer buf = ByteBuffer.wrap(data);
 
-            System.out.println(pduTypeEnum);
-            System.out.println(dp.getAddress().getHostName()+ ":" + dp.getPort());
+            LOGGER.log(Level.FINER, "{0}", pduTypeEnum);
+            LOGGER.log(Level.FINER, "{0}:{1}", new Object[]{dp.getAddress().getHostName(), dp.getPort()});
+
             switch(pduTypeEnum) {
                 case SIGNAL:
                     SignalPdu spdu = new SignalPdu();
@@ -120,7 +124,7 @@ public class Sniffer {
 
                     break;
                 default:
-                    System.out.println("Unknown Type:" + pduTypeEnum);
+                    LOGGER.log(Level.INFO, "Unknown Type:{0}", pduTypeEnum);
                     break;
             }
         }

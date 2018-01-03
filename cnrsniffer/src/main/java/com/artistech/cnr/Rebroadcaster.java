@@ -10,6 +10,9 @@ import java.net.MulticastSocket;
  * Rebroadcast data receivied via TCP as UDP
  */
 public class Rebroadcaster {
+    public static final int MCAST_PORT = 3000;
+    public static final String MCAST_GRP = "226.0.1.1";
+
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
@@ -34,8 +37,13 @@ public class Rebroadcaster {
             socket.close();
         }
         if(multicast) {
-            group = InetAddress.getByName(Sniffer.MCAST_GRP);
-            MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
+            group = InetAddress.getByName(MCAST_GRP);
+            MulticastSocket ms = new MulticastSocket(MCAST_PORT);
+
+            //try this to force to localhost...
+//            InetAddress local = InetAddress.getByName("127.0.0.1");
+//            ms.setInterface(local);
+
             ms.setLoopbackMode(false);
             ms.joinGroup(group);
             socket = ms;
@@ -62,7 +70,7 @@ public class Rebroadcaster {
      * @throws IOException
      */
     public void send(byte[] buf) throws IOException {
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, group, Sniffer.MCAST_PORT);
+        DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
         socket.send(packet);
     }
 

@@ -45,36 +45,4 @@ public class BridgeDemux {
     public void addPair(BridgePair pair) {
         pairs.add(pair);
     }
-
-    /**
-     * Check for a CNR IP to bind with.
-     *
-     * @param cnr cnr IP
-     * @return true if the cnr IP is specified
-     */
-    public boolean hasCnr(String cnr) {
-        boolean ret = false;
-        for(BridgePair bp : pairs) {
-            if(bp.getCnr().equals(cnr)) {
-                ret = true;
-            }
-        }
-        return ret;
-    }
-
-    /**
-     * Get the EMANE IP to bind to.
-     *
-     * @param cnr the cnr IP
-     * @return the emane IP
-     */
-    public String getEmane(String cnr) {
-        String ret = null;
-        for(BridgePair bp : pairs) {
-            if(bp.getCnr().equals(cnr)) {
-                ret = bp.getEmane();
-            }
-        }
-        return ret;
-    }
 }

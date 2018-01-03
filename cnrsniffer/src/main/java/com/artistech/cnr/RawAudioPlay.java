@@ -7,6 +7,7 @@ import javax.sound.sampled.*;
  *
  * Play audio packets received to ensure data is coming through properly.
  */
+@Deprecated
 public class RawAudioPlay {
     private AudioFormat af;
     private SourceDataLine line;

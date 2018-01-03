@@ -1,12 +1,12 @@
 package com.artistech.cnr;
 
+import org.apache.commons.lang3.tuple.MutablePair;
+
 /**
  * Represents a pair of IP addresses to bind.
  */
-public class BridgePair {
+public class BridgePair extends MutablePair<String, String> {
 
-    private String cnr;
-    private String emane;
 
     /**
      * Default constructor.
@@ -16,48 +16,11 @@ public class BridgePair {
     /**
      * Constructor.
      *
-     * @param cnr cnr IP
-     * @param emane emane IP
+     * @param ip1 cnr IP
+     * @param ip2 emane IP
      */
-    public BridgePair(String cnr, String emane) {
-        this.cnr = cnr;
-        this.emane = emane;
-    }
-
-    /**
-     * Get the CNR IP
-     *
-     * @return cnr IP
-     */
-    public String getCnr() {
-        return cnr;
-    }
-
-    /**
-     * Set the CNR IP
-     *
-     * @param value cnr IP
-     */
-    public void setCnr(String value) {
-        cnr = value;
-    }
-
-    /**
-     * Get the EMANE IP
-     *
-     * @return emane IP
-     */
-    public String getEmane() {
-        return emane;
-    }
-
-    /**
-     * Set the EMANE IP
-     *
-     * @param value emane IP
-     */
-    public void setEmane(String value) {
-        emane = value;
+    public BridgePair(String ip1, String ip2) {
+        super(ip1, ip2);
     }
 
     /**
@@ -67,6 +30,6 @@ public class BridgePair {
      */
     @Override
     public int hashCode() {
-        return (cnr + emane).hashCode();
+        return (super.left + super.right).hashCode();
     }
 }
