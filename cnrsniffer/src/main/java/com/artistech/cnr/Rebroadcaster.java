@@ -40,9 +40,9 @@ public class Rebroadcaster {
             group = InetAddress.getByName(MCAST_GRP);
             MulticastSocket ms = new MulticastSocket(MCAST_PORT);
 
-            //try this to force to localhost...
-//            InetAddress local = InetAddress.getByName("127.0.0.1");
-//            ms.setInterface(local);
+            //only listen to multicast from localhost
+            //CNR should be setup to only multicast to localhost as well
+            ms.setInterface(InetAddress.getLoopbackAddress());
 
             ms.setLoopbackMode(false);
             ms.joinGroup(group);
