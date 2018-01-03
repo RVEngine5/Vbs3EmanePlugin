@@ -36,9 +36,6 @@ public class Rebroadcaster {
         if(multicast) {
             group = InetAddress.getByName(Sniffer.MCAST_GRP);
             MulticastSocket ms = new MulticastSocket(Sniffer.MCAST_PORT);
-            if (!multicast) {
-                ms.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
-            }
             ms.setLoopbackMode(false);
             ms.joinGroup(group);
             socket = ms;
