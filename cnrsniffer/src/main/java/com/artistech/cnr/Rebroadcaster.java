@@ -24,7 +24,6 @@ public class Rebroadcaster {
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
-    private boolean multicast = true;
 
     /**
      * Static Constructor
@@ -90,10 +89,6 @@ public class Rebroadcaster {
     private Rebroadcaster() throws IOException{
         this.multicast = true;
         resetSocket(multicast);
-    }
-
-    public boolean isMulticast() {
-        return multicast;
     }
 
     /**

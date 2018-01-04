@@ -119,7 +119,7 @@ public class TcpClient {
      * @param port port to connect to
      * @throws IOException any error reading/writing to socket
      */
-    public static void send(String host, int port) throws IOException {
+    private static Socket connect(String host, int port) throws IOException {
         LOGGER.log(Level.FINER, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
