@@ -42,9 +42,9 @@ public class Rebroadcaster {
 
             //only listen to multicast from localhost
             //CNR should be setup to only multicast to localhost as well
-            ms.setInterface(InetAddress.getLoopbackAddress());
+            //ms.setInterface(InetAddress.getLoopbackAddress());
 
-            ms.setLoopbackMode(false);
+            ms.setLoopbackMode(true);
             ms.joinGroup(group);
             socket = ms;
         } else {
