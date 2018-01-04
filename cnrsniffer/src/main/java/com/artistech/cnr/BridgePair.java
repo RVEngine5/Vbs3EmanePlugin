@@ -7,12 +7,6 @@ import org.apache.commons.lang3.tuple.MutablePair;
  */
 public class BridgePair extends MutablePair<String, String> {
 
-
-    /**
-     * Default constructor.
-     */
-    public BridgePair() {}
-
     /**
      * Constructor.
      *

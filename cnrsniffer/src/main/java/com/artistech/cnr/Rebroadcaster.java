@@ -16,6 +16,7 @@ public class Rebroadcaster {
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
+    private boolean multicast = true;
 
     /**
      * Static Constructor
@@ -28,11 +29,32 @@ public class Rebroadcaster {
         INSTANCE = inst;
     }
 
+    /**
+     * Reset the socket.  Will reset to use multicast.
+     *
+     * @throws IOException if error resetting.
+     */
     public void resetSocket() throws IOException {
-        resetSocket(true);
+        resetSocket(multicast);
     }
 
+    /**
+     * Access if currently setup for multicast.
+     *
+     * @return if multicast is set.
+     */
+    public boolean isMulticast() {
+        return multicast;
+    }
+
+    /**
+     * Reset the socket.
+     *
+     * @param multicast if true, use multicast; if false, use broadcast.
+     * @throws IOException error if resetting.
+     */
     public void resetSocket(boolean multicast) throws IOException {
+        this.multicast = multicast;
         if(socket != null) {
             socket.close();
         }
@@ -66,8 +88,8 @@ public class Rebroadcaster {
     /**
      * Send a packet of data
      *
-     * @param buf
-     * @throws IOException
+     * @param buf the buffer to send.
+     * @throws IOException error sending.
      */
     public void send(byte[] buf) throws IOException {
         DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
@@ -75,9 +97,9 @@ public class Rebroadcaster {
     }
 
     /**
-     * Get the socket
+     * Get the socket.
      *
-     * @return
+     * @return the current Datagram socket.
      */
     public DatagramSocket getSocket() {
         return socket;

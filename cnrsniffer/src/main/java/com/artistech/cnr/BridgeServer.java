@@ -22,6 +22,9 @@ public class BridgeServer {
     private static final Logger LOGGER = Logger.getLogger(BridgeServer.class.getName());
     private static final Map<String, Socket> SOCKETS;
 
+    /**
+     * Static Constructor.
+     */
     static {
         SOCKETS = new HashMap<>();
     }
@@ -44,24 +47,26 @@ public class BridgeServer {
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "[%1$tF %1$tT] [%4$-7s] %5$s %n");
 
+        int port = TcpServer.TCP_PORT;
+
         Options opts = new Options();
-        Option opt = Option.builder("pair").required().numberOfArgs(1).desc("IP Pair.").build();
-        opts.addOption(opt);
-        opts.addOption("port", true, "Bridge Server port to connect to.");
-        opts.addOption("log", true,"Verbose output.");
-        opts.addOption("help","Help");
+        opts.addOption(Option.builder("pair").required().numberOfArgs(1).desc("IP Pair.").build());
+        opts.addOption("port", true, "Bridge Server port to connect to. [Default: " + port + "]");
+        opts.addOption("log", true,"Log output level. [Default: " + TcpClient.getLevel() + "]");
+        opts.addOption("help","Print this message.");
 
         BridgeDemux bd = new BridgeDemux();
         CommandLineParser parser = new DefaultParser();
-        int port = TcpServer.TCP_PORT;
         try {
             CommandLine line = parser.parse(opts, args);
+            //print help
             if (line.hasOption("help")) {
                 HelpFormatter formatter = new HelpFormatter();
                 formatter.printHelp("bridge-server", opts, true);
                 System.exit(0);
             }
 
+            //get all the pairs specified
             String[] pairs = line.getOptionValues("pair");
             for(String arg : pairs) {
                 String[] sp = arg.split(":");
@@ -71,6 +76,7 @@ public class BridgeServer {
                 }
             }
 
+            //set the logging level
             if (line.hasOption("log")) {
                 String val = line.getOptionValue("log");
                 Level level = Level.parse(val);
@@ -78,15 +84,19 @@ public class BridgeServer {
                 LOGGER.log(level, "Logging Level: {0}", level);
             }
 
+            //set the non-default port value
             if (line.hasOption("port")) {
                 port = Integer.parseInt(line.getOptionValue("port"));
             }
         } catch (ParseException pe) {
         }
 
+        //if there are pairs (should be true as at least one '-pairs' is required by CLI)
         if(!bd.getPairs().isEmpty()) {
             LOGGER.log(Level.FINE, "Starting Server...");
             ServerSocket ss = new ServerSocket(port);
+
+            //run forever
             while (true) {
                 Socket client = ss.accept();
 
@@ -96,9 +106,11 @@ public class BridgeServer {
 
                 boolean found = false;
                 for(BridgePair bp : bd.getPairs()) {
+                    //if we already found a match in a previous bp, continue on and stop looking.
                     if(found) {
                         continue;
                     }
+
                     //get paired IP
                     String pairedIp = null;
                     if(bp.getLeft().equals(ip)) {
@@ -111,11 +123,16 @@ public class BridgeServer {
 
                     //check for existing...
                     if(pairedIp != null) {
+                        //found a match, stop all future searches.
                         found = true;
+
+                        //check if there is already a waiting pairing
                         if (SOCKETS.containsKey(pairedIp)) {
+                            //get the current waiting socket
                             final Socket pairedSocket = SOCKETS.get(pairedIpFinal);
                             SOCKETS.remove(pairedIpFinal);
 
+                            //create a new thread to handle bridging the data.
                             Thread t = new Thread(() -> {
                                 LOGGER.log(Level.FINE, "Starting Bridge: {0} to {1}", new Object[]{ip, pairedIpFinal});
                                 Bridge b = new Bridge(client, pairedSocket);
@@ -131,12 +148,15 @@ public class BridgeServer {
                         }
                     }
                 }
+
+                //if no ip is found, then the current instance is not configured to look for pairs with the IP.
                 if (!found) {
                     LOGGER.log(Level.WARNING,"Not Configured: {0}", ip);
                     client.close();
                 }
             }
         } else {
+            //print help
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("bridge-server", opts, true);
         }

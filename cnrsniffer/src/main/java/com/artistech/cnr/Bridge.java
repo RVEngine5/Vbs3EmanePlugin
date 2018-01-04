@@ -76,24 +76,35 @@ public class Bridge implements Runnable {
         this.sock2 = sock2;
         t1 = new Thread(() -> {
             try {
+                //the t1 thread will create a direction from sock1 to sock2
                 Tx x = new Tx(sock1.getInputStream(), sock2.getOutputStream());
+                //this is a blocking call
                 x.run();
             } catch(IOException ex) {
             }
+            //once x.run exits, close all sockets.
+            //closing all sockets will ensure that all directions are closed
+            //in the event of an exception in one direction.
             closeSocket(sock1);
             closeSocket(sock2);
         });
 
         t2 = new Thread(() -> {
             try {
+                //the t2 thread will create a direction from sock2 to sock1
                 Tx x = new Tx(sock2.getInputStream(), sock1.getOutputStream());
+                //this is a blocking call
                 x.run();
             } catch(IOException ex) {
             }
+            //once x.run exits, close all sockets.
+            //closing all sockets will ensure that all directions are closed
+            //in the event of an exception in one direction.
             closeSocket(sock1);
             closeSocket(sock2);
         });
 
+        //run t1 and t2 as daemon so that they don't stop the application from exiting.
         t1.setDaemon(true);
         t2.setDaemon(true);
     }
@@ -116,22 +127,28 @@ public class Bridge implements Runnable {
      */
     @Override
     public void run() {
+        //start the threads
         t1.start();
         t2.start();
 
         LOGGER.log(Level.FINE, "Starting Server...");
 
+        //wait for the threads to exit.
         try {
             t1.join();
             t2.join();
         } catch (InterruptedException ex) {
         }
 
+        //halt (clean up resources).
         halt();
     }
 
     /**
      * Close all sockets.
+     *
+     * This will cause IO exceptions to fire, the run method of each Tx instance will exit and the t1 and t2 threds will
+     * terminate.
      */
     public void halt() {
         closeSocket(sock1);

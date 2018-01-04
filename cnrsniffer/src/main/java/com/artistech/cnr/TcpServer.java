@@ -4,10 +4,8 @@ import edu.nps.moves.dis.SignalPdu;
 import edu.nps.moves.disenum.PduType;
 import edu.nps.moves.dis.TransmitterPdu;
 
-import java.io.*;
-import java.net.InetAddress;
-import java.net.MulticastSocket;
-import java.net.ServerSocket;
+import java.io.DataInputStream;
+import java.io.IOException;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

@@ -15,15 +15,20 @@ import edu.nps.moves.dis.OneByteChunk;
 import edu.nps.moves.disenum.PduType;
 import edu.nps.moves.dis.TransmitterPdu;
 import edu.nps.moves.dis.SignalPdu;
+import org.apache.commons.cli.*;
 
 /**
  * Test class for receiving multicast data from CNR and playing the audio.
  */
-@Deprecated
 public class Sniffer {
 
     private static final Logger LOGGER = Logger.getLogger(Sniffer.class.getName());
 
+    /**
+     * Print out data on the spdu.
+     *
+     * @param spdu the packet to print.
+     */
     public static void printInfo(SignalPdu spdu) {
         //this is identical to data pulled form WireShark, so that's good.
         //signal data
@@ -42,6 +47,11 @@ public class Sniffer {
         LOGGER.log(Level.INFO, "Time Stamp: {0}", spdu.getTimestamp());           //
     }
 
+    /**
+     * Print out data on the tpdu.
+     *
+     * @param tpdu the packet to print.
+     */
     public static void printInfo(TransmitterPdu tpdu) {
         //this is identical to data pulled form WireShark, so that's good.
         //signal data
@@ -59,6 +69,12 @@ public class Sniffer {
         LOGGER.log(Level.INFO, "Time Stamp: {0}", tpdu.getTimestamp());           //
     }
 
+    /**
+     * Get the byte data of the spdu.
+     *
+     * @param spdu the spdu to read.
+     * @return the byte[] representing the spdu.
+     */
     public static ByteArrayOutputStream getData(SignalPdu spdu) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         DataOutputStream dos = new DataOutputStream(baos);
@@ -74,11 +90,19 @@ public class Sniffer {
         return baos;
     }
 
-    private static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws Exception {
+        System.setProperty("java.util.logging.SimpleFormatter.format",
+                "[%1$tF %1$tT] [%4$-7s] %5$s %n");
+
         InetAddress group = InetAddress.getByName(Rebroadcaster.MCAST_GRP);
         final MulticastSocket ms = new MulticastSocket(Rebroadcaster.MCAST_PORT);
+        ms.setInterface(InetAddress.getLoopbackAddress());
 //        ms.setInterface(InetAddress.getByName(InetAddress.getLocalHost().getHostName()));
         ms.joinGroup(group);
+
+        Options opts = new Options();
+        opts.addOption("log", true,"Log output level. [Default: " + TcpClient.getLevel() + "]");
+        opts.addOption("help","Print this message.");
 
         byte[] buffer = new byte[8192];
         LOGGER.log(Level.FINE, "receiving...");
@@ -94,6 +118,26 @@ public class Sniffer {
                 LOGGER.log(Level.WARNING, null, ex);
             }
         }));
+
+        CommandLineParser parser = new DefaultParser();
+        try {
+            CommandLine line = parser.parse(opts, args);
+            if (line.hasOption("help")) {
+                HelpFormatter formatter = new HelpFormatter();
+                formatter.printHelp("cnr-sniffer", opts, true);
+                System.exit(0);
+            }
+
+            if(line.hasOption("log")) {
+                String val = line.getOptionValue("log");
+                Level level = Level.parse(val);
+                TcpClient.setLevel(level);
+                LOGGER.log(level, "Logging Level: {0}", level);
+            }
+        } catch(ParseException pe) {
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("cnr-sniffer", opts, true);
+        }
 
         while (true) {
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
@@ -114,7 +158,7 @@ public class Sniffer {
 
                     try (ByteArrayOutputStream baos = getData(spdu)) {
                         //audio is: 16-bit Linear PCM 2's complement, Big Endian (4) <- ENCODING SCHEME 4
-                        rap.play(baos.toByteArray());
+                        rap.write(baos.toByteArray());
                     }
                     break;
                 case TRANSMITTER:

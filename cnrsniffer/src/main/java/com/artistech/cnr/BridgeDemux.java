@@ -28,7 +28,7 @@ public class BridgeDemux {
     }
 
     /**
-     * Set the pairs.
+     * Set the pairs.  This may be used for reading a serialized verion of pairs.
      *
      * @param value all pairs
      */
