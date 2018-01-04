@@ -8,14 +8,19 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Rebroadcast data receivied via TCP as UDP
  */
 public class Rebroadcaster {
+
+    private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
 
+    private boolean multicast;
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
@@ -68,8 +73,6 @@ public class Rebroadcaster {
             //only listen to multicast from localhost
             //CNR should be setup to only multicast to localhost as well
             ms.setInterface(InetAddress.getLoopbackAddress());
-
-            ms.setLoopbackMode(false);
             ms.joinGroup(group);
             socket = ms;
         } else {
@@ -85,7 +88,12 @@ public class Rebroadcaster {
      * @throws IOException
      */
     private Rebroadcaster() throws IOException{
+        this.multicast = true;
         resetSocket(multicast);
+    }
+
+    public boolean isMulticast() {
+        return multicast;
     }
 
     /**
@@ -95,8 +103,10 @@ public class Rebroadcaster {
      * @throws IOException error sending.
      */
     public void send(byte[] buf) throws IOException {
+        LOGGER.log(Level.FINEST, "Broadcasting on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
         DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
         socket.send(packet);
+        LOGGER.log(Level.FINEST, "Sent on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
     }
 
     /**

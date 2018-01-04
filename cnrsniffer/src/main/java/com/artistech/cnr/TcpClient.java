@@ -119,12 +119,11 @@ public class TcpClient {
      * @param port port to connect to
      * @throws IOException any error reading/writing to socket
      */
-    private static Socket connect(String host, int port) throws IOException {
-        LOGGER.log(Level.FINE, "waiting for server: {0}:{1}", new Object[]{host, port});
+    public static void send(String host, int port) throws IOException {
+        LOGGER.log(Level.FINER, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
         final Socket socket = new Socket(host, port);
-        LOGGER.log(Level.FINE, "connected to {0}:{1}", new Object[]{host, port});
 
         Thread t = new Thread(() -> {
             LOGGER.log(Level.FINEST,"Starting Server Thread...");
@@ -187,8 +186,7 @@ public class TcpClient {
      */
     public static void main(String[] args) {
         System.setProperty("java.util.logging.SimpleFormatter.format",
-                "[%1$tF %1$tT] [%4$-7s] %5$s %n");
-
+                "%1$tT %4$s [%3$s] %5$s %6$s%n");
 //        setLevel(Level.ALL);
 //        LOGGER.log(Level.ALL, "hello");
 //        LOGGER.log(Level.FINEST, "hello");

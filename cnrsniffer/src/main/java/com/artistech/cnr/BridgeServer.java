@@ -105,7 +105,7 @@ public class BridgeServer {
                 Socket client = ss.accept();
 
                 //check for existing match
-                String ip = client.getInetAddress().getHostAddress();
+                final String ip = client.getInetAddress().getHostAddress();
                 LOGGER.log(Level.FINE, "Client Connected: {0}", ip);
 
                 boolean found = false;
@@ -132,18 +132,20 @@ public class BridgeServer {
 
                         //check if there is already a waiting pairing
                         if (SOCKETS.containsKey(pairedIp)) {
-                            //get the current waiting socket
-                            final Socket pairedSocket = SOCKETS.get(pairedIpFinal);
-                            SOCKETS.remove(pairedIpFinal);
+                            SOCKETS.put(ip, client);
 
-                            //create a new thread to handle bridging the data.
+                            final Socket sockLeft = SOCKETS.get(bp.left);
+                            final Socket sockRight = SOCKETS.get(bp.right);
+                            SOCKETS.remove(bp.left);
+                            SOCKETS.remove(bp.right);
+
                             Thread t = new Thread(() -> {
-                                LOGGER.log(Level.FINE, "Starting Bridge: {0} to {1}", new Object[]{ip, pairedIpFinal});
-                                Bridge b = new Bridge(client, pairedSocket);
+                                Bridge b = new Bridge(sockLeft, sockRight);
                                 b.run();
                                 b.halt();
                             });
                             t.setDaemon(true);
+                            LOGGER.log(Level.FINE, "Starting Bridge: {0} to {1}", new Object[]{ip, pairedIpFinal});
                             t.start();
                         } else {
                             //paired connection not yet present; store and wait
