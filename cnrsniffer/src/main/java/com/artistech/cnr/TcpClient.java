@@ -52,10 +52,16 @@ public class TcpClient {
             }
 
             LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
-            LOGGER.log(Level.FINER, "Listening [{1}]: {0}", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad", ms.getClass().getName()});
+            LOGGER.log(Level.FINER, "Listening [{0}]: {1}", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad", ms.getRemoteSocketAddress()});
+
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-            ms.receive(dp);
+            try {
+                ms.receive(dp);
+            } catch(Exception ex) {
+                LOGGER.log(Level.SEVERE, null, ex);
+            }
+
             byte[] data = dp.getData();
 
             int pduType = 255 & data[2];
