@@ -79,10 +79,10 @@ public class Rebroadcaster {
      * @throws IOException
      */
     public void send(byte[] buf) throws IOException {
-        LOGGER.log(Level.FINEST, "Broadcasting on {0} channel: {1}", new Object[]{this.multicast ? "multicast" : "broadcast", socket.getInetAddress()});
+        LOGGER.log(Level.FINEST, "Broadcasting on {0} channel: {1}", new Object[]{this.multicast ? "multicast" : "broadcast", socket.getLocalAddress()});
         DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
         socket.send(packet);
-        LOGGER.log(Level.FINEST, "Sent on {0} channel: {1}", new Object[]{this.multicast ? "multicast" : "broadcast", socket.getInetAddress()});
+        LOGGER.log(Level.FINEST, "Sent on {0} channel: {1}", new Object[]{this.multicast ? "multicast" : "broadcast", socket.getLocalAddress()});
     }
 
     /**
