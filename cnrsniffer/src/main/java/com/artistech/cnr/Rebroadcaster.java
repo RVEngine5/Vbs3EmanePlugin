@@ -13,6 +13,7 @@ public class Rebroadcaster {
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
 
+    private boolean multicast;
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
@@ -29,10 +30,11 @@ public class Rebroadcaster {
     }
 
     public void resetSocket() throws IOException {
-        resetSocket(true);
+        resetSocket(multicast);
     }
 
     public void resetSocket(boolean multicast) throws IOException {
+        this.multicast = multicast;
         if(socket != null) {
             socket.close();
         }
@@ -42,9 +44,7 @@ public class Rebroadcaster {
 
             //only listen to multicast from localhost
             //CNR should be setup to only multicast to localhost as well
-            //ms.setInterface(InetAddress.getLoopbackAddress());
-
-            ms.setLoopbackMode(true);
+            ms.setInterface(InetAddress.getLoopbackAddress());
             ms.joinGroup(group);
             socket = ms;
         } else {
@@ -60,7 +60,12 @@ public class Rebroadcaster {
      * @throws IOException
      */
     private Rebroadcaster() throws IOException{
-        resetSocket(true);
+        this.multicast = true;
+        resetSocket(multicast);
+    }
+
+    public boolean isMulticast() {
+        return multicast;
     }
 
     /**
