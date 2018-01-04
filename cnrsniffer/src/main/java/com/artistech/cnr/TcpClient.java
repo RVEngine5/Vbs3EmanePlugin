@@ -190,13 +190,13 @@ public class TcpClient {
                 LOGGER.log(level, "Logging Level: {0}", level);
             }
 
-//            if(line.hasOption("broadcast")) {
-//                try {
-//                    Rebroadcaster.INSTANCE.resetSocket(false);
-//                } catch(IOException ex) {
-//                    LOGGER.log(Level.SEVERE, null, ex);
-//                }
-//            }
+            if(line.hasOption("broadcast")) {
+                try {
+                    Rebroadcaster.INSTANCE.resetSocket(false);
+                } catch(IOException ex) {
+                    LOGGER.log(Level.SEVERE, null, ex);
+                }
+            }
             if(line.hasOption("port")) {
                 port = Integer.parseInt(line.getOptionValue("port"));
             }
