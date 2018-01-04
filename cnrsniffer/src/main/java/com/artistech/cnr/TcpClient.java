@@ -154,7 +154,7 @@ public class TcpClient {
      */
     public static void main(String[] args) throws IllegalAccessException{
         System.setProperty("java.util.logging.SimpleFormatter.format",
-                "[%1$tF %1$tT] [%4$-7s] %5$s %n");
+                "[%4$-7s] %5$s %n");
 
 //        setLevel(Level.ALL);
 //        LOGGER.log(Level.ALL, "hello");
