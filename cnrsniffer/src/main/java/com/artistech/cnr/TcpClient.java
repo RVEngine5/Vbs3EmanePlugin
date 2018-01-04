@@ -1,3 +1,6 @@
+/*
+ * Copyright 2017-18, ArtisTech, Inc.
+ */
 package com.artistech.cnr;
 
 import java.io.DataOutputStream;

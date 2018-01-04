@@ -1,3 +1,6 @@
+/*
+ * Copyright 2017-18, ArtisTech, Inc.
+ */
 package com.artistech.cnr;
 
 import java.io.IOException;
@@ -82,7 +85,7 @@ public class Rebroadcaster {
      * @throws IOException
      */
     private Rebroadcaster() throws IOException{
-        resetSocket(true);
+        resetSocket(multicast);
     }
 
     /**
