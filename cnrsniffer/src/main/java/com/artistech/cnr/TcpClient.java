@@ -47,10 +47,12 @@ public class TcpClient {
         while (true) {
             //if the bridge socket is closed, then return.
             if(socket.isClosed()) {
+                LOGGER.log(Level.FINEST, "Socket Closed: {0}", new Object[]{socket.getRemoteSocketAddress()});
                 return;
             }
 
-            LOGGER.log(Level.FINER, "Listening: {0}", new Object[]{ms.getClass().getName()});
+            LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
+            LOGGER.log(Level.FINER, "Listening [{1}]: {0}", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad", ms.getClass().getName()});
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
             ms.receive(dp);
