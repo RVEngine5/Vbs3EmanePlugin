@@ -56,11 +56,7 @@ public class TcpClient {
 
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-            try {
-                ms.receive(dp);
-            } catch(Exception ex) {
-                LOGGER.log(Level.SEVERE, null, ex);
-            }
+            ms.receive(dp);
 
             byte[] data = dp.getData();
 
