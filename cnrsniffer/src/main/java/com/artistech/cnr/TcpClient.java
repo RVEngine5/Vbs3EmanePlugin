@@ -41,7 +41,7 @@ public class TcpClient {
      */
     private static void forward(final DatagramSocket ms, Socket socket) throws IOException {
         byte[] buffer = new byte[BUFFER_SIZE];
-        LOGGER.log(Level.FINE, "TcpClient.send[socket, socket]: receiving");
+        LOGGER.log(Level.FINE, "Starting fowarding service...");
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
         while (true) {
@@ -237,7 +237,8 @@ public class TcpClient {
             while(true) {
                 //connect to the bridge server and return the socket.
                 //also sets up a thread for receiving data from the server.
-                try (Socket socket = connect(line.getOptionValue("server"), port)){
+                try {
+                    Socket socket = connect(line.getOptionValue("server"), port);
                     //blocking call to forward data from the datagram socket to the bridge server.
                     forward(Rebroadcaster.INSTANCE.getSocket(), socket);
                 } catch(IOException ex) {
