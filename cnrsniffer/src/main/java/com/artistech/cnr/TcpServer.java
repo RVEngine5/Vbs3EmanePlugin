@@ -67,7 +67,6 @@ public class TcpServer {
                 byte[] data = message;
 
                 try {
-                    Logger.getLogger(TcpServer.class.getName()).log(Level.FINEST, "Rebroadcasting on multicast channel");
                     rebroadcaster.send(data);
                 } catch (IOException ex) {
                     LOGGER.log(Level.WARNING, null, ex);

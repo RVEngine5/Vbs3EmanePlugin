@@ -5,11 +5,15 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Rebroadcast data receivied via TCP as UDP
  */
 public class Rebroadcaster {
+
+    private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
 
@@ -75,8 +79,10 @@ public class Rebroadcaster {
      * @throws IOException
      */
     public void send(byte[] buf) throws IOException {
+        LOGGER.log(Level.FINEST, "Broadcasting on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
         DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
         socket.send(packet);
+        LOGGER.log(Level.FINEST, "Sent on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
     }
 
     /**
