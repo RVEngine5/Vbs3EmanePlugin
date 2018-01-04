@@ -74,7 +74,7 @@ public class TcpServer {
 
                 try {
                     //push the data from the bridge over the datagram socket
-                    Logger.getLogger(TcpServer.class.getName()).log(Level.FINEST, "Rebroadcasting on multicast channel");
+                    Logger.getLogger(TcpServer.class.getName()).log(Level.FINEST, "Rebroadcasting on {0} channel", rebroadcaster.isMulticast() ? "multicast" : "broadcast ");
                     rebroadcaster.send(data);
                 } catch (IOException ex) {
                     LOGGER.log(Level.WARNING, null, ex);
