@@ -52,7 +52,7 @@ public class TcpClient {
             }
 
             LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
-            LOGGER.log(Level.FINER, "Listening [{0}]: {1}", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad", ms.getRemoteSocketAddress()});
+            LOGGER.log(Level.FINER, "Listening [{0}]", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad"});
 
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);

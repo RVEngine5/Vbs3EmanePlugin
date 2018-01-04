@@ -78,6 +78,7 @@ public class Rebroadcaster {
         } else {
             group = listAllBroadcastAddresses().get(0);
             //group = InetAddress.getByName("255.255.255.255");
+            LOGGER.log(Level.INFO, "Broadcast Address: {0}", new Object[]{group.getHostAddress()});
 
             socket = new DatagramSocket();
             socket.setBroadcast(true);
