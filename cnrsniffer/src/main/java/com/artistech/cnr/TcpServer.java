@@ -30,9 +30,9 @@ public class TcpServer {
     /**
      * Receive data from the socket and re-broadcast it on the local multicast channel.
      *
-     * @param connectionSocket
-     * @param rebroadcaster
-     * @throws IOException
+     * @param connectionSocket socket to receive data from the bridge
+     * @param rebroadcaster Datagram wrapper for rebroadcasting the packet
+     * @throws IOException error on read or write
      */
     public static void receive(Socket connectionSocket, Rebroadcaster rebroadcaster) throws IOException {
         while (true) {
@@ -47,6 +47,10 @@ public class TcpServer {
                 dIn.readFully(message, 0, message.length);
             }
 
+            //Unpack the PDU to get the timestamp
+            //we don't want to flood the network with loopbacked packets
+            //so save timestamps, if an identical timestamp comes through
+            //block it from re-sending back through the bridge.
             int pduType = 255 & message[2];
             PduType pduTypeEnum = PduType.lookup[pduType];
             ByteBuffer bb = ByteBuffer.wrap(message);
@@ -64,10 +68,12 @@ public class TcpServer {
                     break;
             }
 
+            //check if there was an unpacked message
             if (message != null) {
                 byte[] data = message;
 
                 try {
+                    //push the data from the bridge over the datagram socket
                     Logger.getLogger(TcpServer.class.getName()).log(Level.FINEST, "Rebroadcasting on multicast channel");
                     rebroadcaster.send(data);
                 } catch (IOException ex) {

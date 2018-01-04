@@ -3,6 +3,7 @@
  */
 package com.artistech.cnr;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -43,10 +44,10 @@ public class BridgeServer {
      *
      * The app will handle broken connections by resetting and starting again.
      *
-     * @param args
-     * @throws Exception
+     * @param args command line args
+     * @throws IOException error creating/reading sockets
      */
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) throws IOException {
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "[%1$tF %1$tT] [%4$-7s] %5$s %n");
 
