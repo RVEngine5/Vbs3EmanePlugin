@@ -94,11 +94,10 @@ public class TcpClient {
      * @throws IOException any error reading/writing to socket
      */
     public static void send(String host, int port) throws IOException {
-        LOGGER.log(Level.FINE, "waiting for server: {0}:{1}", new Object[]{host, port});
+        LOGGER.log(Level.FINER, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
         final Socket socket = new Socket(host, port);
-        LOGGER.log(Level.FINEST, "[socket, host, port] sending");
 
         Thread t = new Thread(() -> {
             LOGGER.log(Level.FINE,"Starting Server Thread...");
@@ -154,8 +153,7 @@ public class TcpClient {
      */
     public static void main(String[] args) throws IllegalAccessException{
         System.setProperty("java.util.logging.SimpleFormatter.format",
-                "[%4$-7s] %5$s %n");
-
+                "%1$tT %4$s [%3$s] %5$s %6$s%n");
 //        setLevel(Level.ALL);
 //        LOGGER.log(Level.ALL, "hello");
 //        LOGGER.log(Level.FINEST, "hello");
