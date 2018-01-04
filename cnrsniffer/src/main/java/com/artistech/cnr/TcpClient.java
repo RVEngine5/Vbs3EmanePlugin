@@ -50,6 +50,7 @@ public class TcpClient {
                 return;
             }
 
+            LOGGER.log(Level.FINER, "Listening: {0}", new Object[]{ms.getClass().getName()});
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
             ms.receive(dp);
