@@ -3,9 +3,7 @@
  */
 package com.artistech.cnr;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
@@ -223,14 +221,14 @@ public class TcpClient {
                 threads.add(t);
             }
         }
-        while(!halted.get()) {
-            try {
-                Thread.sleep(100);
-            } catch(Exception ex) {}
-        }
-        for(Thread t : threads) {
-            t.interrupt();
-        }
+//        while(!halted.get()) {
+//            try {
+//                Thread.sleep(100);
+//            } catch(Exception ex) {}
+//        }
+//        for(Thread t : threads) {
+//            t.interrupt();
+//        }
     }
 
     /**
@@ -288,7 +286,7 @@ public class TcpClient {
         });
 
         //start receiving data from bridge server.
-        t.setDaemon(true);
+        t.setDaemon(false);
         t.start();
 
         return socket;
@@ -431,6 +429,15 @@ public class TcpClient {
                         forward(Rebroadcaster.INSTANCE.getSocket(), socket);
                     } else if(clients.length > 0){
                         forward(clients, socket);
+
+                        BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
+                        String stdin = buffer.readLine();
+                        while(stdin != null) {
+                            if("quit".equals(stdin.trim().toLowerCase())) {
+                                System.exit(1);
+                            }
+                            stdin = buffer.readLine();
+                        }
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
