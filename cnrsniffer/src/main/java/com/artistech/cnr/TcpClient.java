@@ -136,7 +136,7 @@ public class TcpClient {
                 Thread t = new Thread(() -> {
 
                     //loop forever 1: keep trying to connect
-                    while (!halted.get() && !socket.isClosed()) {
+                    while (!halted.get()) {
                         try {
                             final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
                             TcpClient.clients.add(client);
@@ -207,6 +207,7 @@ public class TcpClient {
                         } catch (IOException ex) {
                             //LOGGER.log(Level.FINEST, "{0}: {1}:{2} - isClosed: {3}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT, socket.isClosed()});
                         }
+                        LOGGER.log(Level.FINER, "Forward thread shutdown...");
                     }
                 });
                 t.setDaemon(true);
@@ -264,6 +265,7 @@ public class TcpClient {
                 } catch(IOException ex) {}
             }
             TcpClient.clients.clear();
+            halted.set(true);
             LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
         });
 
@@ -410,6 +412,7 @@ public class TcpClient {
                         forward(clients, socket);
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
+                    halted.set(false);
                 } catch(IOException ex) {
                     LOGGER.log(Level.FINEST, null, ex);
                 }
