@@ -57,7 +57,7 @@ public class Bridge implements Runnable {
 
                 byte[] data = new byte[TcpClient.BUFFER_SIZE * 2];
 
-                while(true) {
+                while(!Rebroadcaster.INSTANCE.isHalted()) {
                     int len = is.read(data, 0, data.length);
                     os.write(data, 0, len);
                     os.flush();

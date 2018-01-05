@@ -6,7 +6,9 @@ package com.artistech.cnr;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -48,6 +50,16 @@ public class BridgeServer {
      * @throws IOException error creating/reading sockets
      */
     public static void main(String[] args) throws IOException {
+        final List<Bridge> bridges = new ArrayList<>();
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            LOGGER.log(Level.INFO, "Cleaning up for shutdown");
+            Rebroadcaster.INSTANCE.halt();
+            for(Bridge b : bridges) {
+                b.halt();
+            }
+        }));
+
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "[%1$tF %1$tT] [%4$-7s] %5$s %n");
 
@@ -93,6 +105,10 @@ public class BridgeServer {
                 port = Integer.parseInt(line.getOptionValue("port"));
             }
         } catch (ParseException pe) {
+            System.out.println(pe.getMessage());
+            //print help
+            HelpFormatter formatter = new HelpFormatter();
+            formatter.printHelp("bridge-server", opts, true);
         }
 
         //if there are pairs (should be true as at least one '-pairs' is required by CLI)
@@ -101,7 +117,7 @@ public class BridgeServer {
             ServerSocket ss = new ServerSocket(port);
 
             //run forever
-            while (true) {
+            while (!Rebroadcaster.INSTANCE.isHalted()) {
                 Socket client = ss.accept();
 
                 //check for existing match
@@ -143,6 +159,7 @@ public class BridgeServer {
                                 Bridge b = new Bridge(sockLeft, sockRight);
                                 b.run();
                                 b.halt();
+                                bridges.add(b);
                             });
                             t.setDaemon(true);
                             LOGGER.log(Level.FINE, "Starting Bridge: {0} to {1}", new Object[]{ip, pairedIpFinal});
