@@ -3,15 +3,14 @@
  */
 package com.artistech.cnr;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -34,6 +33,7 @@ import org.apache.commons.cli.HelpFormatter;
 public class TcpClient {
     private static final Logger LOGGER = Logger.getLogger(TcpClient.class.getName());
 
+    private static Thread socketThread = null;
     public static int BUFFER_SIZE = 8192;
     private static final List<Socket> clients = new ArrayList<>();
     private static final Object LOCK = new Object();
@@ -240,11 +240,21 @@ public class TcpClient {
      * @param port port to connect to
      * @throws IOException any error reading/writing to socket
      */
-    private static Socket connect(String host, int port) throws IOException {
-        LOGGER.log(Level.FINER, "waiting for server: {0}:{1}", new Object[]{host, port});
+    private static Socket connect(String host, int port, Socket existing) throws IOException {
+        if(socketThread != null) {
+            return existing;
+        }
+        LOGGER.log(Level.FINEST, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
-        final Socket socket = new Socket(host, port);
+        Socket s = null;
+        while(s == null) {
+            try {
+                s = new Socket(host, port);
+            } catch(IOException ex) {
+            }
+        }
+        final Socket socket = s;
 
         Thread t = new Thread(() -> {
             LOGGER.log(Level.FINEST,"Starting Server Thread...");
@@ -278,11 +288,13 @@ public class TcpClient {
             TcpClient.clients.clear();
             halted.set(true);
             LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
+            socketThread = null;
         });
 
         //start receiving data from bridge server.
-        t.setDaemon(true);
+        t.setDaemon(false);
         t.start();
+        socketThread = t;
 
         return socket;
     }
@@ -380,7 +392,7 @@ public class TcpClient {
                         break;
                     case "broad":
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(false);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -388,7 +400,7 @@ public class TcpClient {
                     case "uni":
                         clients = line.getOptionValues("client");
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(clients);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -413,25 +425,40 @@ public class TcpClient {
             while(!halted.get()) {
                 //connect to the bridge server and return the socket.
                 //also sets up a thread for receiving data from the server.
+                Socket socket = null;
                 try {
-                    LOGGER.log(Level.FINER, "Connect to server");
-                    Socket socket = connect(line.getOptionValue("server"), port);
-                    //blocking call to forward data from the datagram socket to the bridge server.
-                    if(!cast.equals("uni")) {
-                        forward(Rebroadcaster.INSTANCE.getSocket(), socket);
-                    } else if(clients.length > 0){
-                        forward(clients, socket);
+                    LOGGER.log(Level.FINEST, "Connect to server");
+                    //blocking call until a socket connection is made.
+                    socket = connect(line.getOptionValue("server"), port, socket);
+                    LOGGER.log(Level.FINER, "Connected to server");
+                    if(socket != null) {
+                        //blocking call to forward data from the datagram socket to the bridge server.
+                        if (!cast.equals("uni")) {
+                            forward(Rebroadcaster.INSTANCE.getSocket(), socket);
+                        } else if (clients.length > 0) {
+                            forward(clients, socket);
+                        }
+                        LOGGER.log(Level.FINER, "Reconnect to server");
                     }
-                    LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
-                    if(Rebroadcaster.INSTANCE.getCastType() == Rebroadcaster.CastingEnum.Uni) {
-                        try {
-                            Rebroadcaster.INSTANCE.halt();
-                            Rebroadcaster.INSTANCE.resetSocket(clients);
-                        } catch(IOException ex2) {}
-                    }
                     //LOGGER.log(Level.FINEST, null, ex);
                 } finally {
+                    try {
+                        //close the socket to the bridge server
+                        if(socket != null) {
+                            socket.close();
+                        }
+                    }catch(IOException ex2) {
+                    }
+                    if(Rebroadcaster.INSTANCE.getCastType() == Rebroadcaster.CastingEnum.Uni) {
+                        //close the sockets for uni-casting
+                        try {
+                            Rebroadcaster.INSTANCE.halt();
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
+                        } catch(IOException ex2) {
+                        }
+                    }
+
                     //HACK, we want to tell all threads that we are halting, but
                     //the program isn't halting, just re-setting.
                     halted.set(false);
