@@ -3,12 +3,15 @@
  */
 package com.artistech.cnr;
 
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.Socket;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -31,6 +34,8 @@ public class TcpClient {
     private static final Logger LOGGER = Logger.getLogger(TcpClient.class.getName());
 
     public static int BUFFER_SIZE = 8192;
+    private static final List<Socket> clients = new ArrayList<>();
+    private static final Object LOCK = new Object();
 
     /**
      * Forward data from the multicast socket to the tcp socket.
@@ -52,7 +57,7 @@ public class TcpClient {
             }
 
             LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
-            LOGGER.log(Level.FINER, "Listening [{0}]", new Object[]{Rebroadcaster.INSTANCE.isMulticast() ? "multi" : "broad"});
+            LOGGER.log(Level.FINER, "Listening [{0}]", new Object[]{Rebroadcaster.INSTANCE.getCastType()});
 
             //receive data from the datagram socket.
             DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
@@ -105,6 +110,112 @@ public class TcpClient {
             } else {
                 LOGGER.log(Level.FINEST, "Found Sent Packet");
             }
+        }
+    }
+
+    /**
+     * Forward data from uni-cast clients to external client.
+     *
+     * @param clients clients to connect to for listening
+     * @param socket socket that is on the other side of emane
+     * @throws IOException error on network
+     */
+    private static void forward(String[] clients, final Socket socket) throws IOException {
+        List<String> addrs = Rebroadcaster.listAllAddresses();
+        final DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
+
+        List<Thread> threads = new ArrayList<>();
+
+        for(String host : clients) {
+            //do not connect to self
+            if(!addrs.contains(host)) {
+
+                //create a new thread for reading data from the network
+                Thread t = new Thread(() -> {
+
+                    //loop forever 1: keep trying to connect
+                    while (true) {
+                        try {
+                            final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
+                            TcpClient.clients.add(client);
+
+                            DataInputStream dIn = new DataInputStream(client.getInputStream());
+
+                            LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
+                            LOGGER.log(Level.FINER, "Listening [{0}]", new Object[]{"uni"});
+
+                            //loop forever 2: keep reading data
+                            while (true) {
+                                int length = dIn.readInt();
+                                byte[] data = null;
+                                // read the message
+                                if (length > 0) {
+                                    data = new byte[length];
+                                    dIn.readFully(data, 0, data.length);
+                                }
+
+                                int pduType = 255 & data[2];
+                                PduType pduTypeEnum = PduType.lookup[pduType];
+                                ByteBuffer bb = ByteBuffer.wrap(data);
+
+                                //log debug data
+                                LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
+                                LOGGER.log(Level.FINEST, "Receive From: {0}", new Object[]{client.getInetAddress().getHostAddress()});
+
+                                //we must deserialie the PDU to get the timestamp.
+                                //this is so that we don't end up with a feedback loop.
+                                //if we can come up with a better solution to this, that would be great.
+                                boolean send = true;
+
+                                //deserialize and get the timestamp.
+                                switch (pduTypeEnum) {
+                                    case TRANSMITTER:
+                                        TransmitterPdu tpdu = new TransmitterPdu();
+                                        tpdu.unmarshal(bb);
+                                        if (TcpServer.SENT.contains(tpdu.getTimestamp())) {
+                                            TcpServer.SENT.remove(tpdu.getTimestamp());
+                                            send = false;
+                                        }
+                                        break;
+                                    case SIGNAL:
+                                        SignalPdu spdu = new SignalPdu();
+                                        spdu.unmarshal(bb);
+                                        if (TcpServer.SENT.contains(spdu.getTimestamp())) {
+                                            TcpServer.SENT.remove(spdu.getTimestamp());
+                                            send = false;
+                                        }
+                                        break;
+                                    default:
+                                        send = false;
+                                        break;
+                                }
+
+                                //if we are safe to send, forward the packet to the bridge server.
+                                if (send) {
+                                    LOGGER.log(Level.FINEST, "Writing to socket...");
+                                    synchronized (LOCK) {
+                                        socketOutputStream.writeInt(data.length);
+                                        socketOutputStream.write(data);
+                                        socketOutputStream.flush();
+                                    }
+                                } else {
+                                    LOGGER.log(Level.FINEST, "Found Sent Packet");
+                                }
+                            }
+                        } catch (IOException ex) {
+                            LOGGER.log(Level.FINEST, "{0}: {1}:{2}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT});
+                        }
+                    }
+                });
+                t.setDaemon(true);
+                t.start();
+                threads.add(t);
+            }
+        }
+        for(Thread t : threads) {
+            try {
+                t.join();
+            } catch(InterruptedException ex) {}
         }
     }
 
@@ -181,6 +292,15 @@ public class TcpClient {
      * @param args expects 1 argument that is the server to connect to.
      */
     public static void main(String[] args) {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                for(Socket socket : clients) {
+                    try {
+                        socket.close();
+                    } catch (IOException ex)
+                    {}
+                }
+            }));
+
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "%1$tT %4$s [%3$s] %5$s %6$s%n");
 //        setLevel(Level.ALL);
@@ -195,11 +315,13 @@ public class TcpClient {
 //        LOGGER.log(Level.OFF, "hello");
 
         int port = TcpServer.TCP_PORT;
+        String cast = "multi";
 
         Options opts = new Options();
         opts.addOption(Option.builder("server").required().numberOfArgs(1).desc("Server to connect to.").build());
         opts.addOption("port", true, "Bridge Server port to connect to. [Default: " + port + "]");
-        opts.addOption("broadcast","If broadcasting instead of multicasting.");
+        opts.addOption("cast", true,"[uni | multi | broad] cast. [Default: " + cast +"]");
+        opts.addOption("client", true,"Client to connect to for unicast");
         opts.addOption("log", true,"Log output level. [Default: " + getLevel() + "]");
         opts.addOption("help","Print this message.");
 
@@ -221,12 +343,36 @@ public class TcpClient {
                 LOGGER.log(level, "Logging Level: {0}", level);
             }
 
+            String[] clients = new String[]{};
+
             //set if app should use broadcast instead of the default multicast
-            if(line.hasOption("broadcast")) {
-                try {
-                    Rebroadcaster.INSTANCE.resetSocket(false);
-                } catch(IOException ex) {
-                    LOGGER.log(Level.SEVERE, null, ex);
+            if(line.hasOption("cast")) {
+                cast = line.getOptionValue("cast");
+                switch(cast) {
+                    case "multi":
+                        break;
+                    case "broad":
+                        try {
+                            Rebroadcaster.INSTANCE.resetSocket(false);
+                        } catch(IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+                        break;
+                    case "uni":
+                        clients = line.getOptionValues("client");
+                        try {
+                            Rebroadcaster.INSTANCE.resetSocket(clients);
+                        } catch(IOException ex) {
+                            LOGGER.log(Level.SEVERE, null, ex);
+                        }
+
+                        break;
+                    default:
+                        //print help
+                        HelpFormatter formatter = new HelpFormatter();
+                        formatter.printHelp("cnr-client", opts, true);
+                        System.exit(0);
+                        break;
                 }
             }
 
@@ -243,13 +389,18 @@ public class TcpClient {
                 try {
                     Socket socket = connect(line.getOptionValue("server"), port);
                     //blocking call to forward data from the datagram socket to the bridge server.
-                    forward(Rebroadcaster.INSTANCE.getSocket(), socket);
+                    if(!cast.equals("uni")) {
+                        forward(Rebroadcaster.INSTANCE.getSocket(), socket);
+                    } else if(clients.length > 0){
+                        forward(clients, socket);
+                    }
                 } catch(IOException ex) {
                     LOGGER.log(Level.FINEST, null, ex);
                 }
             }
         } catch (ParseException pe) {
             //print help
+            System.out.println(pe.getMessage());
             HelpFormatter formatter = new HelpFormatter();
             formatter.printHelp("cnr-client", opts, true);
         }

@@ -3,6 +3,9 @@
  */
 package com.artistech.cnr;
 
+import com.sun.security.ntlm.Server;
+
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.ArrayList;
@@ -17,9 +20,22 @@ import java.util.logging.Logger;
  */
 public class Rebroadcaster {
 
+    public enum CastingEnum {
+        None,
+        Uni,
+        Multi,
+        Broad
+    }
+
     private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
+
+    private ServerSocket server;
+    private final List<Socket> clients = new ArrayList<>();
+    private final List<DataOutputStream> clientStreams = new ArrayList<>();
+
+    private CastingEnum castType;
 
     private boolean multicast;
     private DatagramSocket socket;
@@ -51,8 +67,70 @@ public class Rebroadcaster {
      *
      * @return if multicast is set.
      */
-    public boolean isMulticast() {
-        return multicast;
+    public CastingEnum getCastType() {
+        return castType;
+    }
+
+    /**
+     * Close all resources
+     *
+     * @throws IOException error closing
+     */
+    private void reset() throws IOException {
+        castType = CastingEnum.None;
+
+        if(server != null) {
+            server.close();
+        }
+        //this should fire when server closes...
+        //close all open client connections.
+        for(Socket client : Rebroadcaster.this.clients) {
+            try {
+                client.close();
+            } catch (IOException ex1) {}
+        }
+        Rebroadcaster.this.clients.clear();
+        Rebroadcaster.this.clientStreams.clear();
+
+        if(socket != null) {
+            socket.close();
+        }
+    }
+
+    public void resetSocket(String[] clients) throws IOException {
+        reset();
+
+        castType = CastingEnum.Uni;
+        server = new ServerSocket(MCAST_PORT);
+
+        Thread t = new Thread(() -> {
+            LOGGER.log(Level.FINER, "Starting Socket Server...");
+            while(castType == CastingEnum.Uni) {
+                try {
+                    //create a client connection
+                    Socket client = server.accept();
+                    LOGGER.log(Level.FINER, "Received Connectin: {0}", client.getInetAddress().getHostAddress());
+
+                    final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
+                    clientStreams.add(socketOutputStream);
+                    Rebroadcaster.this.clients.add(client);
+                } catch(IOException ex)
+                {
+                    //this should fire when server closes...
+                    //close all open client connections.
+                    for(Socket client : Rebroadcaster.this.clients) {
+                        try {
+                            client.close();
+                        } catch (IOException ex1) {}
+                    }
+                    Rebroadcaster.this.clients.clear();
+                    Rebroadcaster.this.clientStreams.clear();
+                }
+            }
+        });
+
+        t.setDaemon(true);
+        t.start();
     }
 
     /**
@@ -62,10 +140,9 @@ public class Rebroadcaster {
      * @throws IOException error if resetting.
      */
     public void resetSocket(boolean multicast) throws IOException {
-        this.multicast = multicast;
-        if(socket != null) {
-            socket.close();
-        }
+        reset();
+        castType = multicast ? CastingEnum.Multi : CastingEnum.Broad;
+
         if(multicast) {
             group = InetAddress.getByName(MCAST_GRP);
             MulticastSocket ms = new MulticastSocket(MCAST_PORT);
@@ -85,7 +162,7 @@ public class Rebroadcaster {
         }
     }
 
-    private List<InetAddress> listAllBroadcastAddresses() throws SocketException {
+    public static List<InetAddress> listAllBroadcastAddresses() throws SocketException {
         List<InetAddress> broadcastList = new ArrayList<>();
         Enumeration<NetworkInterface> interfaces
                 = NetworkInterface.getNetworkInterfaces();
@@ -98,6 +175,25 @@ public class Rebroadcaster {
 
             networkInterface.getInterfaceAddresses().stream()
                     .map(a -> a.getBroadcast())
+                    .filter(Objects::nonNull)
+                    .forEach(broadcastList::add);
+        }
+        return broadcastList;
+    }
+
+    public static List<String> listAllAddresses() throws SocketException {
+        List<String> broadcastList = new ArrayList<>();
+        Enumeration<NetworkInterface> interfaces
+                = NetworkInterface.getNetworkInterfaces();
+        while (interfaces.hasMoreElements()) {
+            NetworkInterface networkInterface = interfaces.nextElement();
+
+            if (networkInterface.isLoopback() || !networkInterface.isUp()) {
+                continue;
+            }
+
+            networkInterface.getInterfaceAddresses().stream()
+                    .map(a -> a.getAddress().getHostAddress())
                     .filter(Objects::nonNull)
                     .forEach(broadcastList::add);
         }
@@ -121,10 +217,31 @@ public class Rebroadcaster {
      * @throws IOException error sending.
      */
     public void send(byte[] buf) throws IOException {
-        LOGGER.log(Level.FINEST, "Broadcasting on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
-        DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
-        socket.send(packet);
-        LOGGER.log(Level.FINEST, "Sent on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
+        switch(castType) {
+            case Uni:
+                LOGGER.log(Level.FINEST, "Unicasting to clients");
+                //for each attached client, send the data to the client.
+                for(DataOutputStream clientStream : clientStreams) {
+                    //wrap in a try so that if one client fails, it still goes to the rest.
+                    try {
+                        clientStream.writeInt(buf.length);
+                        clientStream.write(buf);
+                        clientStream.flush();
+                    } catch (IOException ex) {}
+                }
+                break;
+            case Broad: //same logic as multi...
+            case Multi:
+                LOGGER.log(Level.FINEST, "Broadcasting on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
+                DatagramPacket packet = new DatagramPacket(buf, buf.length, group, MCAST_PORT);
+                socket.send(packet);
+                LOGGER.log(Level.FINEST, "Sent on {0} channel", new Object[]{this.multicast ? "multicast" : "broadcast"});
+                break;
+            default:
+                //not currently initialized...
+                LOGGER.log(Level.WARNING, "Not currently initialized");
+                break;
+        }
     }
 
     /**
