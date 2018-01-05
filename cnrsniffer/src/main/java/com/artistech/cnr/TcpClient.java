@@ -203,7 +203,7 @@ public class TcpClient {
                                 }
                             }
                         } catch (IOException ex) {
-                            LOGGER.log(Level.FINEST, "{0}: {1}:{2}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT});
+//                            LOGGER.log(Level.FINEST, "{0}: {1}:{2}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT});
                         }
                     }
                 });
