@@ -27,19 +27,24 @@ public class Rebroadcaster {
     private class RebroadcastThread implements Runnable {
 
         private final Mailbox<byte[]> data = new Mailbox<>();
+        private Socket sock;
         private DataOutputStream os;
 
         public void run() {
-            while(!data.isHalted()) {
-                byte[] msg = data.getMessage();
-                if(msg != null) {
-                    try {
-                        os.writeInt(msg.length);
-                        os.write(msg);
-                        os.flush();
-                    } catch(IOException ex) {}
+            try {
+                os = new DataOutputStream(sock.getOutputStream());
+                while (!data.isHalted()) {
+                    byte[] msg = data.getMessage();
+                    if (msg != null) {
+                        try {
+                            os.writeInt(msg.length);
+                            os.write(msg);
+                            os.flush();
+                        } catch (IOException ex) {
+                        }
+                    }
                 }
-            }
+            } catch (IOException ex2) {}
         }
 
         public void halt() {
@@ -47,6 +52,11 @@ public class Rebroadcaster {
             try {
                 os.close();
             } catch(IOException ex) {}
+        }
+
+        @Override
+        public String toString() {
+            return sock.getInetAddress().getHostAddress();
         }
     }
 
@@ -56,8 +66,7 @@ public class Rebroadcaster {
     public static final String MCAST_GRP = "226.0.1.1";
 
     private ServerSocket server;
-//    private final List<Socket> clients = new ArrayList<>();
-    private final Map<Socket, RebroadcastThread> clientStreams = new HashMap<>();
+    private final Map<String, RebroadcastThread> clientStreams = new HashMap<>();
 
     private CastingEnum castType;
 
@@ -130,15 +139,19 @@ public class Rebroadcaster {
                 try {
                     //create a client connection
                     Socket client = server.accept();
-                    LOGGER.log(Level.FINER, "Received Connectin: {0}", client.getInetAddress().getHostAddress());
 
-                    final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
-                    RebroadcastThread rt = new RebroadcastThread();
-                    rt.os = socketOutputStream;
-                    Thread t2 = new Thread(rt);
-                    t2.setDaemon(true);
-                    t2.start();
-                    clientStreams.put(client, rt);
+                    if(!clientStreams.containsKey(client.getInetAddress().getHostAddress())) {
+                        LOGGER.log(Level.FINER, "Received Connection: {0}", client.getInetAddress().getHostAddress());
+                        final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
+                        RebroadcastThread rt = new RebroadcastThread();
+                        rt.sock = client;
+                        Thread t2 = new Thread(rt);
+                        t2.setDaemon(true);
+                        t2.start();
+                        clientStreams.put(rt.toString(), rt);
+                    } else {
+                        client.close();
+                    }
                 } catch(IOException ex)
                 {
                     //this should fire when server closes...
@@ -247,6 +260,7 @@ public class Rebroadcaster {
                 tmpList.addAll(clientStreams.values());
                 for(RebroadcastThread clientStream : tmpList) {
                     //wrap in a try so that if one client fails, it still goes to the rest.
+                    LOGGER.log(Level.FINEST, "Unicasting to client: {0}", new Object[]{clientStream});
                     clientStream.data.addMessage(buf);
                 }
                 break;
