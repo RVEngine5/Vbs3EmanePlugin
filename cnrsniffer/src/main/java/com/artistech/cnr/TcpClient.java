@@ -122,9 +122,16 @@ public class TcpClient {
      * @param socket socket that is on the other side of emane
      * @throws IOException error on network
      */
-    private static void forward(String[] clients, final Socket socket) throws IOException {
-        List<String> addrs = Rebroadcaster.listAllAddresses();
-        final DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
+    private static void forward(String[] clients, final Socket socket) {
+        List<String> addrs = new ArrayList<>();
+        DataOutputStream sosTemp = null;
+        try {
+            addrs.addAll(Rebroadcaster.listAllAddresses());
+            sosTemp = new DataOutputStream(socket.getOutputStream());
+        } catch (IOException ex) {
+            LOGGER.log(Level.SEVERE, null, ex);
+        }
+        final DataOutputStream socketOutputStream = sosTemp;
 
         List<Thread> threads = new ArrayList<>();
 
@@ -204,6 +211,7 @@ public class TcpClient {
                                     LOGGER.log(Level.FINEST, "Found Sent Packet");
                                 }
                             }
+                            TcpClient.clients.remove(client);
                         } catch (IOException ex) {
                             //LOGGER.log(Level.FINEST, "{0}: {1}:{2} - isClosed: {3}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT, socket.isClosed()});
                         }
@@ -215,10 +223,13 @@ public class TcpClient {
                 threads.add(t);
             }
         }
-        while(!TcpClient.clients.isEmpty()) {
+        while(!halted.get()) {
             try {
                 Thread.sleep(100);
             } catch(Exception ex) {}
+        }
+        for(Thread t : threads) {
+            t.interrupt();
         }
     }
 
