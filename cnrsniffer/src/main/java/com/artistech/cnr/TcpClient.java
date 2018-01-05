@@ -392,7 +392,7 @@ public class TcpClient {
                         break;
                     case "broad":
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(false);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -400,7 +400,7 @@ public class TcpClient {
                     case "uni":
                         clients = line.getOptionValues("client");
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(clients);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
