@@ -109,7 +109,7 @@ public class Rebroadcaster {
      *
      * @throws IOException error closing
      */
-    private void reset() throws IOException {
+    public void close() throws IOException {
         castType = CastingEnum.None;
 
         if(server != null) {
@@ -128,7 +128,7 @@ public class Rebroadcaster {
     }
 
     public void resetSocket(String[] clients) throws IOException {
-        reset();
+        close();
 
         castType = CastingEnum.Uni;
         server = new ServerSocket(MCAST_PORT);
@@ -175,7 +175,7 @@ public class Rebroadcaster {
      * @throws IOException error if resetting.
      */
     public void resetSocket(boolean multicast) throws IOException {
-        reset();
+        close();
         castType = multicast ? CastingEnum.Multi : CastingEnum.Broad;
 
         if(multicast) {

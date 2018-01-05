@@ -299,6 +299,11 @@ public class TcpClient {
                     } catch (IOException ex)
                     {}
                 }
+                try {
+                    Rebroadcaster.INSTANCE.close();
+                } catch(IOException ex) {
+                    LOGGER.log(Level.SEVERE, ex.getMessage());
+                }
             }));
 
         System.setProperty("java.util.logging.SimpleFormatter.format",
