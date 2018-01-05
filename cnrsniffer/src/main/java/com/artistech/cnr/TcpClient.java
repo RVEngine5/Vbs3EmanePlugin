@@ -454,7 +454,7 @@ public class TcpClient {
                         //close the sockets for uni-casting
                         try {
                             Rebroadcaster.INSTANCE.halt();
-                            Rebroadcaster.INSTANCE.resetSocket(clients);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
                         } catch(IOException ex2) {
                         }
                     }
