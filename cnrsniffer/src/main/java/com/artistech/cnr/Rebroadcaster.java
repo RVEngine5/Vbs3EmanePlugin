@@ -50,6 +50,7 @@ public class Rebroadcaster {
         }
     }
 
+    private final List<RebroadcastThread> tmpList = new ArrayList<>();
     private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
@@ -237,12 +238,14 @@ public class Rebroadcaster {
      * @param buf the buffer to send.
      * @throws IOException error sending.
      */
-    public void send(byte[] buf) throws IOException {
+    public synchronized void send(byte[] buf) throws IOException {
         switch(castType) {
             case Uni:
                 LOGGER.log(Level.FINEST, "Unicasting to clients");
                 //for each attached client, send the data to the client.
-                for(RebroadcastThread clientStream : clientStreams.values()) {
+                tmpList.clear();
+                tmpList.addAll(clientStreams.values());
+                for(RebroadcastThread clientStream : tmpList) {
                     //wrap in a try so that if one client fails, it still goes to the rest.
                     clientStream.data.addMessage(buf);
                 }
