@@ -57,3 +57,7 @@ Levels are:
 # Known Issues
 
 The setup does not deal well unless unicast is used on the emane-side clients.  Broadcast sometimes work using OLSRD, but is unreliable.  Using unicast works, but if any server/client disconnects, the entire simulation must be shutdown and restarted.
+
+## v1.0e Update
+
+Can now restart the bridge-server on-the-fly and all pieces will re-connect.  Testing each emane-side client is next.
