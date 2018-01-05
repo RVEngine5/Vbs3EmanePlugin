@@ -434,6 +434,7 @@ public class TcpClient {
                         BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
                         String stdin = buffer.readLine();
                         while(stdin != null) {
+                            System.out.println(stdin);
                             if("quit".equals(stdin.trim().toLowerCase())) {
                                 System.exit(1);
                             }
