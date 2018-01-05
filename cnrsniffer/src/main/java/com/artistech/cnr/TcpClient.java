@@ -207,8 +207,8 @@ public class TcpClient {
                         } catch (IOException ex) {
                             //LOGGER.log(Level.FINEST, "{0}: {1}:{2} - isClosed: {3}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT, socket.isClosed()});
                         }
-                        LOGGER.log(Level.FINER, "Forward thread shutdown...");
                     }
+                    LOGGER.log(Level.FINER, "Forward thread shutdown...");
                 });
                 t.setDaemon(true);
                 t.start();
