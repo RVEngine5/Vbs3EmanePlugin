@@ -222,14 +222,14 @@ public class TcpClient {
                 threads.add(t);
             }
         }
-//        while(!halted.get()) {
-//            try {
-//                Thread.sleep(100);
-//            } catch(Exception ex) {}
-//        }
-//        for(Thread t : threads) {
-//            t.interrupt();
-//        }
+        while(!halted.get()) {
+            try {
+                Thread.sleep(100);
+            } catch(Exception ex) {}
+        }
+        for(Thread t : threads) {
+            t.interrupt();
+        }
     }
 
     /**
@@ -430,17 +430,6 @@ public class TcpClient {
                         forward(Rebroadcaster.INSTANCE.getSocket(), socket);
                     } else if(clients.length > 0){
                         forward(clients, socket);
-
-                        System.out.println("Type 'quit' to exit.");
-                        Scanner s = new Scanner(System.in);
-                        String stdin = s.next();
-                        while(stdin != null) {
-                            System.out.println(stdin);
-                            if("quit".equals(stdin.trim().toLowerCase())) {
-                                System.exit(1);
-                            }
-                            stdin = s.next();
-                        }
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
