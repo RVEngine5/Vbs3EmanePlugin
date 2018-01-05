@@ -136,7 +136,7 @@ public class TcpClient {
                 Thread t = new Thread(() -> {
 
                     //loop forever 1: keep trying to connect
-                    while (!halted.get()) {
+                    while (!halted.get() && socket.isConnected()) {
                         try {
                             final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
                             TcpClient.clients.add(client);
@@ -214,10 +214,10 @@ public class TcpClient {
                 threads.add(t);
             }
         }
-        for(Thread t : threads) {
+        while(socket.isConnected()) {
             try {
-                t.join();
-            } catch(InterruptedException ex) {}
+                Thread.sleep(100);
+            } catch(Exception ex) {}
         }
     }
 
