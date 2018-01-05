@@ -123,10 +123,6 @@ public class TcpClient {
      * @throws IOException error on network
      */
     private static void forward(String[] clients, final Socket socket) {
-        if(socket == null) {
-            return;
-        }
-
         List<String> addrs = new ArrayList<>();
         DataOutputStream sosTemp = null;
         try {
@@ -249,11 +245,11 @@ public class TcpClient {
 
         //connect to waiting server...
         Socket s = null;
-        try {
-            while(s == null) {
+        while(s == null) {
+            try {
                 s = new Socket(host, port);
+            } catch(IOException ex) {
             }
-        } catch(IOException ex) {
         }
         final Socket socket = s;
 
