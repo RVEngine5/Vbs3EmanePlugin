@@ -3,15 +3,12 @@
  */
 package com.artistech.cnr;
 
-import com.sun.security.ntlm.Server;
+import com.artistech.utils.Mailbox;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.*;
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,13 +24,39 @@ public class Rebroadcaster {
         Broad
     }
 
+    private class RebroadcastThread implements Runnable {
+
+        private final Mailbox<byte[]> data = new Mailbox<>();
+        private DataOutputStream os;
+
+        public void run() {
+            while(!data.isHalted()) {
+                byte[] msg = data.getMessage();
+                if(msg != null) {
+                    try {
+                        os.writeInt(msg.length);
+                        os.write(msg);
+                        os.flush();
+                    } catch(IOException ex) {}
+                }
+            }
+        }
+
+        public void halt() {
+            data.halt();
+            try {
+                os.close();
+            } catch(IOException ex) {}
+        }
+    }
+
     private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
 
     private ServerSocket server;
-    private final List<Socket> clients = new ArrayList<>();
-    private final List<DataOutputStream> clientStreams = new ArrayList<>();
+//    private final List<Socket> clients = new ArrayList<>();
+    private final Map<Socket, RebroadcastThread> clientStreams = new HashMap<>();
 
     private CastingEnum castType;
 
@@ -84,12 +107,9 @@ public class Rebroadcaster {
         }
         //this should fire when server closes...
         //close all open client connections.
-        for(Socket client : Rebroadcaster.this.clients) {
-            try {
-                client.close();
-            } catch (IOException ex1) {}
+        for(RebroadcastThread client : Rebroadcaster.this.clientStreams.values()) {
+            client.halt();
         }
-        Rebroadcaster.this.clients.clear();
         Rebroadcaster.this.clientStreams.clear();
 
         if(socket != null) {
@@ -112,18 +132,19 @@ public class Rebroadcaster {
                     LOGGER.log(Level.FINER, "Received Connectin: {0}", client.getInetAddress().getHostAddress());
 
                     final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
-                    clientStreams.add(socketOutputStream);
-                    Rebroadcaster.this.clients.add(client);
+                    RebroadcastThread rt = new RebroadcastThread();
+                    rt.os = socketOutputStream;
+                    Thread t2 = new Thread(rt);
+                    t2.setDaemon(true);
+                    t2.start();
+                    clientStreams.put(client, rt);
                 } catch(IOException ex)
                 {
                     //this should fire when server closes...
                     //close all open client connections.
-                    for(Socket client : Rebroadcaster.this.clients) {
-                        try {
-                            client.close();
-                        } catch (IOException ex1) {}
+                    for(RebroadcastThread client : Rebroadcaster.this.clientStreams.values()) {
+                        client.halt();
                     }
-                    Rebroadcaster.this.clients.clear();
                     Rebroadcaster.this.clientStreams.clear();
                 }
             }
@@ -221,13 +242,9 @@ public class Rebroadcaster {
             case Uni:
                 LOGGER.log(Level.FINEST, "Unicasting to clients");
                 //for each attached client, send the data to the client.
-                for(DataOutputStream clientStream : clientStreams) {
+                for(RebroadcastThread clientStream : clientStreams.values()) {
                     //wrap in a try so that if one client fails, it still goes to the rest.
-                    try {
-                        clientStream.writeInt(buf.length);
-                        clientStream.write(buf);
-                        clientStream.flush();
-                    } catch (IOException ex) {}
+                    clientStream.data.addMessage(buf);
                 }
                 break;
             case Broad: //same logic as multi...
