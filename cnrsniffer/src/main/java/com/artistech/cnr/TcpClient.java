@@ -10,6 +10,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.Level;
@@ -431,14 +432,14 @@ public class TcpClient {
                         forward(clients, socket);
 
                         System.out.println("Type 'quit' to exit.");
-                        BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
-                        String stdin = buffer.readLine();
+                        Scanner s = new Scanner(System.in);
+                        String stdin = s.next();
                         while(stdin != null) {
                             System.out.println(stdin);
                             if("quit".equals(stdin.trim().toLowerCase())) {
                                 System.exit(1);
                             }
-                            stdin = buffer.readLine();
+                            stdin = s.next();
                         }
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
