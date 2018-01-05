@@ -241,10 +241,17 @@ public class TcpClient {
      * @throws IOException any error reading/writing to socket
      */
     private static Socket connect(String host, int port) throws IOException {
-        LOGGER.log(Level.FINER, "waiting for server: {0}:{1}", new Object[]{host, port});
+        LOGGER.log(Level.FINEST, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
-        final Socket socket = new Socket(host, port);
+        Socket s = null;
+        try {
+            while(s == null) {
+                s = new Socket(host, port);
+            }
+        } catch(IOException ex) {
+        }
+        final Socket socket = s;
 
         Thread t = new Thread(() -> {
             LOGGER.log(Level.FINEST,"Starting Server Thread...");
@@ -413,9 +420,12 @@ public class TcpClient {
             while(!halted.get()) {
                 //connect to the bridge server and return the socket.
                 //also sets up a thread for receiving data from the server.
+                Socket socket = null;
                 try {
-                    LOGGER.log(Level.FINER, "Connect to server");
-                    Socket socket = connect(line.getOptionValue("server"), port);
+                    LOGGER.log(Level.FINEST, "Connect to server");
+                    //blocking call until a socket connection is made.
+                    socket = connect(line.getOptionValue("server"), port);
+                    LOGGER.log(Level.FINER, "Connected to server");
                     //blocking call to forward data from the datagram socket to the bridge server.
                     if(!cast.equals("uni")) {
                         forward(Rebroadcaster.INSTANCE.getSocket(), socket);
@@ -424,11 +434,20 @@ public class TcpClient {
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
+                    try {
+                        //close the socket to the bridge server
+                        if(socket != null) {
+                            socket.close();
+                        }
+                    }catch(IOException ex2) {
+                    }
                     if(Rebroadcaster.INSTANCE.getCastType() == Rebroadcaster.CastingEnum.Uni) {
+                        //close the sockets for uni-casting
                         try {
                             Rebroadcaster.INSTANCE.halt();
                             Rebroadcaster.INSTANCE.resetSocket(clients);
-                        } catch(IOException ex2) {}
+                        } catch(IOException ex2) {
+                        }
                     }
                     //LOGGER.log(Level.FINEST, null, ex);
                 } finally {
