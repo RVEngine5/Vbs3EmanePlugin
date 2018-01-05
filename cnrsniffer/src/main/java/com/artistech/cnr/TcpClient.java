@@ -33,6 +33,7 @@ import org.apache.commons.cli.HelpFormatter;
 public class TcpClient {
     private static final Logger LOGGER = Logger.getLogger(TcpClient.class.getName());
 
+    private static Thread socketThread = null;
     public static int BUFFER_SIZE = 8192;
     private static final List<Socket> clients = new ArrayList<>();
     private static final Object LOCK = new Object();
@@ -239,7 +240,10 @@ public class TcpClient {
      * @param port port to connect to
      * @throws IOException any error reading/writing to socket
      */
-    private static Socket connect(String host, int port) throws IOException {
+    private static Socket connect(String host, int port, Socket existing) throws IOException {
+        if(socketThread != null) {
+            return existing;
+        }
         LOGGER.log(Level.FINEST, "waiting for server: {0}:{1}", new Object[]{host, port});
 
         //connect to waiting server...
@@ -284,11 +288,13 @@ public class TcpClient {
             TcpClient.clients.clear();
             halted.set(true);
             LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
+            socketThread = null;
         });
 
         //start receiving data from bridge server.
         t.setDaemon(false);
         t.start();
+        socketThread = t;
 
         return socket;
     }
@@ -423,16 +429,20 @@ public class TcpClient {
                 try {
                     LOGGER.log(Level.FINEST, "Connect to server");
                     //blocking call until a socket connection is made.
-                    socket = connect(line.getOptionValue("server"), port);
+                    socket = connect(line.getOptionValue("server"), port, socket);
                     LOGGER.log(Level.FINER, "Connected to server");
-                    //blocking call to forward data from the datagram socket to the bridge server.
-                    if(!cast.equals("uni")) {
-                        forward(Rebroadcaster.INSTANCE.getSocket(), socket);
-                    } else if(clients.length > 0){
-                        forward(clients, socket);
+                    if(socket != null) {
+                        //blocking call to forward data from the datagram socket to the bridge server.
+                        if (!cast.equals("uni")) {
+                            forward(Rebroadcaster.INSTANCE.getSocket(), socket);
+                        } else if (clients.length > 0) {
+                            forward(clients, socket);
+                        }
+                        LOGGER.log(Level.FINER, "Reconnect to server");
                     }
-                    LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
+                    //LOGGER.log(Level.FINEST, null, ex);
+                } finally {
                     try {
                         //close the socket to the bridge server
                         if(socket != null) {
@@ -448,8 +458,7 @@ public class TcpClient {
                         } catch(IOException ex2) {
                         }
                     }
-                    //LOGGER.log(Level.FINEST, null, ex);
-                } finally {
+
                     //HACK, we want to tell all threads that we are halting, but
                     //the program isn't halting, just re-setting.
                     halted.set(false);
