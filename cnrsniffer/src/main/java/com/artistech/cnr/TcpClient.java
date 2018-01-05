@@ -205,7 +205,7 @@ public class TcpClient {
                                 }
                             }
                         } catch (IOException ex) {
-//                            LOGGER.log(Level.FINEST, "{0}: {1}:{2}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT});
+                            LOGGER.log(Level.FINEST, "{0}: {1}:{2} - isClosed: {3}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT, socket.isClosed()});
                         }
                     }
                 });
@@ -214,7 +214,7 @@ public class TcpClient {
                 threads.add(t);
             }
         }
-        while(socket.isConnected()) {
+        while(!TcpClient.clients.isEmpty()) {
             try {
                 Thread.sleep(100);
             } catch(Exception ex) {}
@@ -258,13 +258,13 @@ public class TcpClient {
                 LOGGER.log(Level.WARNING, null, ex);
             }
 
-            LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
             for(Socket sock : TcpClient.clients) {
                 try {
                     sock.close();
                 } catch(IOException ex) {}
             }
-            clients.clear();
+            TcpClient.clients.clear();
+            LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
         });
 
         //start receiving data from bridge server.
