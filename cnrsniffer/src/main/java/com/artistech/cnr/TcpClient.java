@@ -257,6 +257,8 @@ public class TcpClient {
             } catch(IOException ex) {
                 LOGGER.log(Level.WARNING, null, ex);
             }
+
+            LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
         });
 
         //start receiving data from bridge server.
@@ -393,6 +395,7 @@ public class TcpClient {
                 //connect to the bridge server and return the socket.
                 //also sets up a thread for receiving data from the server.
                 try {
+                    LOGGER.log(Level.FINER, "Connect to server");
                     Socket socket = connect(line.getOptionValue("server"), port);
                     //blocking call to forward data from the datagram socket to the bridge server.
                     if(!cast.equals("uni")) {
@@ -400,6 +403,7 @@ public class TcpClient {
                     } else if(clients.length > 0){
                         forward(clients, socket);
                     }
+                    LOGGER.log(Level.FINER, "Reconnect to server");
                 } catch(IOException ex) {
                     LOGGER.log(Level.FINEST, null, ex);
                 }
