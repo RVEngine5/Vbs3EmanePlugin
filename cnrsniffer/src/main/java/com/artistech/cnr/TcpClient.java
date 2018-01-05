@@ -136,7 +136,7 @@ public class TcpClient {
                 Thread t = new Thread(() -> {
 
                     //loop forever 1: keep trying to connect
-                    while (!halted.get() && socket.isConnected()) {
+                    while (!halted.get() && !socket.isClosed()) {
                         try {
                             final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
                             TcpClient.clients.add(client);
@@ -259,6 +259,12 @@ public class TcpClient {
             }
 
             LOGGER.log(Level.FINER, "Socket disconnect from server: {0}:{1}", new Object[]{host, port});
+            for(Socket sock : TcpClient.clients) {
+                try {
+                    sock.close();
+                } catch(IOException ex) {}
+            }
+            clients.clear();
         });
 
         //start receiving data from bridge server.
