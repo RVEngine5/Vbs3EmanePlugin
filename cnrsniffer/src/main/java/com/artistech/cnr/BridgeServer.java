@@ -152,8 +152,8 @@ public class BridgeServer {
 
                             final Socket sockLeft = SOCKETS.get(bp.left);
                             final Socket sockRight = SOCKETS.get(bp.right);
-                            SOCKETS.remove(bp.left);
-                            SOCKETS.remove(bp.right);
+//                            SOCKETS.remove(bp.left);
+//                            SOCKETS.remove(bp.right);
 
                             Thread t = new Thread(() -> {
                                 Bridge b = new Bridge(sockLeft, sockRight);
