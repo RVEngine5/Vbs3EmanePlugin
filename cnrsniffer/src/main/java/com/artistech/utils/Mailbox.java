@@ -16,7 +16,7 @@ import java.util.List;
  * sending/receiving thread without the need for polling. This solves that
  * problem.
  *
- * @param <T>
+ * @param <T> Paramaterized type of message
  */
 public class Mailbox<T> {
 
@@ -34,7 +34,7 @@ public class Mailbox<T> {
     /**
      * Get the size.
      *
-     * @return
+     * @return the number of messages available
      */
     public synchronized int size() {
         return messages.size();
@@ -54,7 +54,7 @@ public class Mailbox<T> {
      * Add a message to the queue, notifying any waiting processes that a
      * message is available.
      *
-     * @param inMsg
+     * @param inMsg a message to insert
      */
     public synchronized void addMessage(T inMsg) {
         if (!halt) {
@@ -66,7 +66,7 @@ public class Mailbox<T> {
     /**
      * Receive a message from the queue.
      *
-     * @return
+     * @return next available message
      */
     public synchronized T getMessage() {
         if (halt) {
@@ -90,7 +90,7 @@ public class Mailbox<T> {
     /**
      * Get all messages in the mailbox.
      *
-     * @return
+     * @return all available messages
      */
     public synchronized Collection<T> getMessages() {
         if (halt) {
@@ -115,7 +115,7 @@ public class Mailbox<T> {
     /**
      * Is the mailbox halted?
      *
-     * @return
+     * @return if the mailbox has been halted
      */
     public boolean isHalted() {
         return halt;
