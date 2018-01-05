@@ -76,6 +76,7 @@ public class Rebroadcaster {
     private DatagramSocket socket;
     private InetAddress group;
     public static final Rebroadcaster INSTANCE;
+    private Thread serverThread;
 
     /**
      * Static Constructor
@@ -116,10 +117,15 @@ public class Rebroadcaster {
 
         if(server != null) {
             try {
+                LOGGER.log(Level.FINE, "Closing ServerSocket");
                 server.close();
+                LOGGER.log(Level.FINE, "Closed ServerSocket");
             } catch(IOException ex) {
             }
+        } else {
+            LOGGER.log(Level.FINE, "ServerSocket is null");
         }
+
         //this should fire when server closes...
         //close all open client connections.
         for(RebroadcastThread client : Rebroadcaster.this.clientStreams.values()) {
@@ -129,6 +135,10 @@ public class Rebroadcaster {
 
         if(socket != null) {
             socket.close();
+        }
+
+        if(serverThread != null) {
+            serverThread.interrupt();
         }
     }
 
@@ -144,6 +154,7 @@ public class Rebroadcaster {
     public void resetSocket(String[] clients) throws IOException {
         close();
 
+        halted.set(false);
         castType = CastingEnum.Uni;
         server = new ServerSocket(MCAST_PORT);
 
@@ -180,6 +191,7 @@ public class Rebroadcaster {
 
         t.setDaemon(true);
         t.start();
+        serverThread = t;
     }
 
     /**
@@ -192,6 +204,7 @@ public class Rebroadcaster {
         close();
         castType = multicast ? CastingEnum.Multi : CastingEnum.Broad;
 
+        halted.set(false);
         if(multicast) {
             group = InetAddress.getByName(MCAST_GRP);
             MulticastSocket ms = new MulticastSocket(MCAST_PORT);

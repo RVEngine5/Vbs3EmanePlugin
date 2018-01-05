@@ -423,9 +423,18 @@ public class TcpClient {
                         forward(clients, socket);
                     }
                     LOGGER.log(Level.FINER, "Reconnect to server");
-                    halted.set(false);
                 } catch(IOException ex) {
-                    LOGGER.log(Level.FINEST, null, ex);
+                    if(Rebroadcaster.INSTANCE.getCastType() == Rebroadcaster.CastingEnum.Uni) {
+                        try {
+                            Rebroadcaster.INSTANCE.halt();
+                            Rebroadcaster.INSTANCE.resetSocket(clients);
+                        } catch(IOException ex2) {}
+                    }
+                    //LOGGER.log(Level.FINEST, null, ex);
+                } finally {
+                    //HACK, we want to tell all threads that we are halting, but
+                    //the program isn't halting, just re-setting.
+                    halted.set(false);
                 }
             }
         } catch (ParseException pe) {
