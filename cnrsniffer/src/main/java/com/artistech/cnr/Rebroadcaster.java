@@ -9,6 +9,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -60,6 +61,7 @@ public class Rebroadcaster {
         }
     }
 
+    private static final AtomicBoolean halted = new AtomicBoolean(false);
     private final List<RebroadcastThread> tmpList = new ArrayList<>();
     private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
@@ -109,11 +111,14 @@ public class Rebroadcaster {
      *
      * @throws IOException error closing
      */
-    public void close() throws IOException {
+    private void close() {
         castType = CastingEnum.None;
 
         if(server != null) {
-            server.close();
+            try {
+                server.close();
+            } catch(IOException ex) {
+            }
         }
         //this should fire when server closes...
         //close all open client connections.
@@ -127,6 +132,15 @@ public class Rebroadcaster {
         }
     }
 
+    public void halt() {
+        halted.set(true);
+        close();
+    }
+
+    public boolean isHalted() {
+        return halted.get();
+    }
+
     public void resetSocket(String[] clients) throws IOException {
         close();
 
@@ -135,7 +149,7 @@ public class Rebroadcaster {
 
         Thread t = new Thread(() -> {
             LOGGER.log(Level.FINER, "Starting Socket Server...");
-            while(castType == CastingEnum.Uni) {
+            while(castType == CastingEnum.Uni && !halted.get()) {
                 try {
                     //create a client connection
                     Socket client = server.accept();

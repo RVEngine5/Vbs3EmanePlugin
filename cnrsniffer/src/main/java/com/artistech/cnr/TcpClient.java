@@ -12,6 +12,7 @@ import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -36,6 +37,7 @@ public class TcpClient {
     public static int BUFFER_SIZE = 8192;
     private static final List<Socket> clients = new ArrayList<>();
     private static final Object LOCK = new Object();
+    private static final AtomicBoolean halted = new AtomicBoolean(false);
 
     /**
      * Forward data from the multicast socket to the tcp socket.
@@ -49,7 +51,7 @@ public class TcpClient {
         LOGGER.log(Level.FINE, "Starting fowarding service...");
 
         DataOutputStream socketOutputStream = new DataOutputStream(socket.getOutputStream());
-        while (true) {
+        while (!halted.get()) {
             //if the bridge socket is closed, then return.
             if(socket.isClosed()) {
                 LOGGER.log(Level.FINEST, "Socket Closed: {0}", new Object[]{socket.getRemoteSocketAddress()});
@@ -134,7 +136,7 @@ public class TcpClient {
                 Thread t = new Thread(() -> {
 
                     //loop forever 1: keep trying to connect
-                    while (true) {
+                    while (!halted.get()) {
                         try {
                             final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
                             TcpClient.clients.add(client);
@@ -145,7 +147,7 @@ public class TcpClient {
                             LOGGER.log(Level.FINER, "Listening [{0}]", new Object[]{"uni"});
 
                             //loop forever 2: keep reading data
-                            while (true) {
+                            while (!halted.get()) {
                                 int length = dIn.readInt();
                                 byte[] data = null;
                                 // read the message
@@ -293,17 +295,16 @@ public class TcpClient {
      */
     public static void main(String[] args) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            halted.set(true);
+            LOGGER.log(Level.INFO, "Cleaning up for shutdown");
                 for(Socket socket : clients) {
                     try {
                         socket.close();
-                    } catch (IOException ex)
-                    {}
+                    } catch (IOException ex) {
+                        LOGGER.log(Level.WARNING, ex.getMessage());
+                    }
                 }
-                try {
-                    Rebroadcaster.INSTANCE.close();
-                } catch(IOException ex) {
-                    LOGGER.log(Level.SEVERE, ex.getMessage());
-                }
+                Rebroadcaster.INSTANCE.halt();
             }));
 
         System.setProperty("java.util.logging.SimpleFormatter.format",
@@ -388,7 +389,7 @@ public class TcpClient {
 
             //read the server to connect to for pairing.
             //this should always be present as it is required by the CLI.
-            while(true) {
+            while(!halted.get()) {
                 //connect to the bridge server and return the socket.
                 //also sets up a thread for receiving data from the server.
                 try {

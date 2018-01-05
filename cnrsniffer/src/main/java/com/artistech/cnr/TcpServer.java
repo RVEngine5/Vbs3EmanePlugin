@@ -37,7 +37,7 @@ public class TcpServer {
     public static void receive(Socket connectionSocket, Rebroadcaster rebroadcaster) throws IOException {
         DataInputStream dIn = new DataInputStream(connectionSocket.getInputStream());
 
-        while (true) {
+        while (!Rebroadcaster.INSTANCE.isHalted()) {
             // read length of incoming message
             int length = dIn.readInt();
             byte[] message = null;
