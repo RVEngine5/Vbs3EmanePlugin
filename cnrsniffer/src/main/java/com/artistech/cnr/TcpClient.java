@@ -430,6 +430,7 @@ public class TcpClient {
                     } else if(clients.length > 0){
                         forward(clients, socket);
 
+                        System.out.println("Type 'quit' to exit.");
                         BufferedReader buffer = new BufferedReader(new InputStreamReader(System.in));
                         String stdin = buffer.readLine();
                         while(stdin != null) {
