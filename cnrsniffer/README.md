@@ -35,13 +35,13 @@ The emane-client.sh file has a hard-coded BRIDGE_SERVER_IP set and so may requir
 
 ## Start each CNR-side client
 
-`java -jar cnr-sniffer-1.0.jar -server BRIDGE_SERVER_IP`
+`java -jar cnr-bridge-1.0.jar -server BRIDGE_SERVER_IP`
 
 # Logging
 
 To get detailed logging, a `-log LEVEL` argument can be sent on the Java commandline.
 
-`java -jar cnr-sniffer-1.0.jar -server BRIDGE_SERVER_IP -log FINER`
+`java -jar cnr-bridge-1.0.jar -server BRIDGE_SERVER_IP -log FINER`
 
 Levels are:
  - ALL
