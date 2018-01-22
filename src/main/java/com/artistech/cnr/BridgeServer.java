@@ -197,9 +197,7 @@ public class BridgeServer {
 
                         bp.setLeft(ip);
                         pairedIp = bp.getRight();
-
-                        LOGGER.log(Level.FINEST, "setting left (cnr): {0}", bp.getLeft());
-                        LOGGER.log(Level.FINEST, "getting right (xcn): {0}", bp.getRight());
+                        pair = bp;
 
                         SOCKETS.put(bp.getLeft(), client);
                     }
