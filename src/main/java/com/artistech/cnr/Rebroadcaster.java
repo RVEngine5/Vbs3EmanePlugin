@@ -204,7 +204,6 @@ public class Rebroadcaster {
 
                         if(!clientStreams.containsKey(client.getInetAddress().getHostAddress())) {
                             LOGGER.log(Level.FINER, "Received Connection: {0}", client.getInetAddress().getHostAddress());
-                            final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
                             RebroadcastThread rt = new RebroadcastThread();
                             rt.sock = client;
                             Thread t2 = new Thread(rt);
@@ -214,8 +213,7 @@ public class Rebroadcaster {
                         } else {
                             client.close();
                         }
-                    } catch(IOException ex)
-                    {
+                    } catch(IOException ex) {
                         //this should fire when server closes...
                         //close all open client connections.
                         for(RebroadcastThread client : Rebroadcaster.this.clientStreams.values()) {
@@ -280,7 +278,7 @@ public class Rebroadcaster {
     }
 
     /**
-     * Send a packet of data
+     * Send a packet of data to uni-, multi-, or broadcast.
      *
      * @param buf the buffer to send.
      * @throws IOException error sending.
