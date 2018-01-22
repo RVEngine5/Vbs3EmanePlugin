@@ -194,9 +194,14 @@ public class BridgeServer {
                     //check for an available EMPTY left slot
                     if (pairedIp == null && "".equals(bp.getLeft())) {
                         //update the paired ip to be the xcn ip address
+
                         bp.setLeft(ip);
                         pairedIp = bp.getRight();
-                        SOCKETS.put(ip, client);
+
+                        LOGGER.log(Level.FINEST, "setting left (cnr): {0}", bp.getLeft());
+                        LOGGER.log(Level.FINEST, "getting right (xcn): {0}", bp.getRight());
+
+                        SOCKETS.put(bp.getLeft(), client);
                     }
                 }
             }
