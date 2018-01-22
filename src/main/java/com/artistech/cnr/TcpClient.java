@@ -228,7 +228,7 @@ public class TcpClient {
             try {
                 //blocking call that will receive data until error.
                 //data is received from the bridge server.
-                TcpServer.receive(socket, Rebroadcaster.INSTANCE);
+                TcpServer.receive(socket);
             } catch(IOException ex) {
                 LOGGER.log(Level.WARNING, null, ex);
             }

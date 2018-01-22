@@ -44,10 +44,9 @@ public class TcpServer {
      * Receive data from the socket and re-broadcast it on the local multicast channel.
      *
      * @param connectionSocket socket to receive data from the bridge
-     * @param rebroadcaster Datagram wrapper for rebroadcasting the packet
      * @throws IOException error on read or write
      */
-    public static void receive(Socket connectionSocket, Rebroadcaster rebroadcaster) throws IOException {
+    public static void receive(Socket connectionSocket) throws IOException {
         DataInputStream dIn = new DataInputStream(connectionSocket.getInputStream());
 
         while (!Rebroadcaster.INSTANCE.isHalted()) {
@@ -95,7 +94,7 @@ public class TcpServer {
                 byte[] data = message;
 
                 try {
-                    rebroadcaster.send(data);
+                    Rebroadcaster.INSTANCE.send(data);
                 } catch (IOException ex) {
                     LOGGER.log(Level.WARNING, null, ex);
                 }
