@@ -40,7 +40,7 @@ public class TcpClient {
     private static final AtomicBoolean halted = new AtomicBoolean(false);
 
     /**
-     * Forward data from the multicast socket to the tcp socket.
+     * Forward data from the multicast/broadcast socket to the tcp socket.
      *
      * @param ms the multicast socket
      * @param socket the tcp socket
@@ -85,18 +85,12 @@ public class TcpClient {
                 case TRANSMITTER:
                     TransmitterPdu tpdu = new TransmitterPdu();
                     tpdu.unmarshal(bb);
-                    if(TcpServer.SENT.contains(tpdu.getTimestamp())) {
-                        TcpServer.SENT.remove(tpdu.getTimestamp());
-                        send = false;
-                    }
+                    send = !TcpServer.hasSent(tpdu);
                     break;
                 case SIGNAL:
                     SignalPdu spdu = new SignalPdu();
                     spdu.unmarshal(bb);
-                    if(TcpServer.SENT.contains(spdu.getTimestamp())) {
-                        TcpServer.SENT.remove(spdu.getTimestamp());
-                        send = false;
-                    }
+                    send = !TcpServer.hasSent(spdu);
                     break;
                 default:
                     send = false;
@@ -163,41 +157,35 @@ public class TcpClient {
                                     dIn.readFully(data, 0, data.length);
                                 }
 
-                                int pduType = 255 & data[2];
-                                PduType pduTypeEnum = PduType.lookup[pduType];
-                                ByteBuffer bb = ByteBuffer.wrap(data);
-
-                                //log debug data
-                                LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
-                                LOGGER.log(Level.FINEST, "Receive From: {0}", new Object[]{client.getInetAddress().getHostAddress()});
-
-                                //we must deserialie the PDU to get the timestamp.
-                                //this is so that we don't end up with a feedback loop.
-                                //if we can come up with a better solution to this, that would be great.
+//                                int pduType = 255 & data[2];
+//                                PduType pduTypeEnum = PduType.lookup[pduType];
+//                                ByteBuffer bb = ByteBuffer.wrap(data);
+//
+//                                //log debug data
+//                                LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
+//                                LOGGER.log(Level.FINEST, "Receive From: {0}", new Object[]{client.getInetAddress().getHostAddress()});
+//
+//                                //we must deserialie the PDU to get the timestamp.
+//                                //this is so that we don't end up with a feedback loop.
+//                                //if we can come up with a better solution to this, that would be great.
                                 boolean send = true;
-
-                                //deserialize and get the timestamp.
-                                switch (pduTypeEnum) {
-                                    case TRANSMITTER:
-                                        TransmitterPdu tpdu = new TransmitterPdu();
-                                        tpdu.unmarshal(bb);
-                                        if (TcpServer.SENT.contains(tpdu.getTimestamp())) {
-                                            TcpServer.SENT.remove(tpdu.getTimestamp());
-                                            send = false;
-                                        }
-                                        break;
-                                    case SIGNAL:
-                                        SignalPdu spdu = new SignalPdu();
-                                        spdu.unmarshal(bb);
-                                        if (TcpServer.SENT.contains(spdu.getTimestamp())) {
-                                            TcpServer.SENT.remove(spdu.getTimestamp());
-                                            send = false;
-                                        }
-                                        break;
-                                    default:
-                                        send = false;
-                                        break;
-                                }
+//
+//                                //deserialize and get the timestamp.
+//                                switch (pduTypeEnum) {
+//                                    case TRANSMITTER:
+//                                        TransmitterPdu tpdu = new TransmitterPdu();
+//                                        tpdu.unmarshal(bb);
+//                                        send = !TcpServer.hasSent(tpdu.getTimestamp());
+//                                        break;
+//                                    case SIGNAL:
+//                                        SignalPdu spdu = new SignalPdu();
+//                                        spdu.unmarshal(bb);
+//                                        send = !TcpServer.hasSent(spdu.getTimestamp());
+//                                        break;
+//                                    default:
+//                                        send = false;
+//                                        break;
+//                                }
 
                                 //if we are safe to send, forward the packet to the bridge server.
                                 if (send) {
@@ -392,7 +380,7 @@ public class TcpClient {
                         break;
                     case "broad":
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -400,7 +388,7 @@ public class TcpClient {
                     case "uni":
                         clients = line.getOptionValues("client");
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -454,7 +442,7 @@ public class TcpClient {
                         //close the sockets for uni-casting
                         try {
                             Rebroadcaster.INSTANCE.halt();
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex2) {
                         }
                     }
