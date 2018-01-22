@@ -196,6 +196,7 @@ public class BridgeServer {
                         //update the paired ip to be the xcn ip address
                         bp.setLeft(ip);
                         pairedIp = bp.getRight();
+                        SOCKETS.put(ip, client);
                     }
                 }
             }
