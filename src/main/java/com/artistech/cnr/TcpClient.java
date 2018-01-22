@@ -40,7 +40,9 @@ public class TcpClient {
     private static final AtomicBoolean halted = new AtomicBoolean(false);
 
     /**
-     * Forward data from the multicast socket to the tcp socket.
+     * Forward data from the multicast/broadcast socket to the tcp socket.
+     * This should be on the cnr-side, the xcn-side doesn't handle broadcast well and no multicast at all.
+     * cnr-side should be uni-cast
      *
      * @param ms the multicast socket
      * @param socket the tcp socket
@@ -75,28 +77,22 @@ public class TcpClient {
             LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
             LOGGER.log(Level.FINEST, "Receive From: {0}:{1}", new Object[]{dp.getAddress().getHostName(), dp.getPort()});
 
-            //we must deserialie the PDU to get the timestamp.
+            //HACK: we must deserialize the PDU to get the timestamp.
             //this is so that we don't end up with a feedback loop.
-            //if we can come up with a better solution to this, that would be great.
-            boolean send = true;
+            //TODO: if we can come up with a better solution to this, that would be great.
+            boolean send;
 
             //deserialize and get the timestamp.
             switch (pduTypeEnum) {
                 case TRANSMITTER:
                     TransmitterPdu tpdu = new TransmitterPdu();
                     tpdu.unmarshal(bb);
-                    if(TcpServer.SENT.contains(tpdu.getTimestamp())) {
-                        TcpServer.SENT.remove(tpdu.getTimestamp());
-                        send = false;
-                    }
+                    send = !TcpServer.hasSent(tpdu);
                     break;
                 case SIGNAL:
                     SignalPdu spdu = new SignalPdu();
                     spdu.unmarshal(bb);
-                    if(TcpServer.SENT.contains(spdu.getTimestamp())) {
-                        TcpServer.SENT.remove(spdu.getTimestamp());
-                        send = false;
-                    }
+                    send = !TcpServer.hasSent(spdu);
                     break;
                 default:
                     send = false;
@@ -105,8 +101,10 @@ public class TcpClient {
 
             //if we are safe to send, forward the packet to the bridge server.
             if(send) {
-                LOGGER.log(Level.FINEST, "Writing to socket...");
+                LOGGER.log(Level.FINEST, "Forwarding to datagram socket...");
+                //write the length
                 socketOutputStream.writeInt(data.length);
+                //write the data
                 socketOutputStream.write(data);
                 socketOutputStream.flush();
             } else {
@@ -116,7 +114,8 @@ public class TcpClient {
     }
 
     /**
-     * Forward data from uni-cast clients to external client.
+     * Forward data from uni-cast clients to external client.  This should be what is set on the xcn-side unless
+     * it is known that broadcast will work inside of emane.  multicast does not work inside of emane.
      *
      * @param clients clients to connect to for listening
      * @param socket socket that is on the other side of emane
@@ -131,23 +130,27 @@ public class TcpClient {
         } catch (IOException ex) {
             LOGGER.log(Level.SEVERE, null, ex);
         }
+
+        //socketOutputStream is shared between all of the threads
         final DataOutputStream socketOutputStream = sosTemp;
 
         List<Thread> threads = new ArrayList<>();
 
+        //for each host inside xcn/emane, try to connect
         for(String host : clients) {
             //do not connect to self
             if(!addrs.contains(host)) {
-
-                //create a new thread for reading data from the network
+                //create a new thread for reading data from the network from the connected host
                 Thread t = new Thread(() -> {
 
                     //loop forever 1: keep trying to connect
                     while (!halted.get()) {
                         try {
+                            //connect to the xcn/emane node
                             final Socket client = new Socket(host, Rebroadcaster.MCAST_PORT);
                             TcpClient.clients.add(client);
 
+                            //get an input stream from the client
                             DataInputStream dIn = new DataInputStream(client.getInputStream());
 
                             LOGGER.log(Level.FINEST, "Socket: {0}", new Object[]{socket.getRemoteSocketAddress()});
@@ -155,6 +158,7 @@ public class TcpClient {
 
                             //loop forever 2: keep reading data
                             while (!halted.get()) {
+                                //read the length
                                 int length = dIn.readInt();
                                 byte[] data = null;
                                 // read the message
@@ -163,52 +167,15 @@ public class TcpClient {
                                     dIn.readFully(data, 0, data.length);
                                 }
 
-                                int pduType = 255 & data[2];
-                                PduType pduTypeEnum = PduType.lookup[pduType];
-                                ByteBuffer bb = ByteBuffer.wrap(data);
-
-                                //log debug data
-                                LOGGER.log(Level.FINEST, "PDU Type: {0}", new Object[]{pduTypeEnum});
-                                LOGGER.log(Level.FINEST, "Receive From: {0}", new Object[]{client.getInetAddress().getHostAddress()});
-
-                                //we must deserialie the PDU to get the timestamp.
-                                //this is so that we don't end up with a feedback loop.
-                                //if we can come up with a better solution to this, that would be great.
-                                boolean send = true;
-
-                                //deserialize and get the timestamp.
-                                switch (pduTypeEnum) {
-                                    case TRANSMITTER:
-                                        TransmitterPdu tpdu = new TransmitterPdu();
-                                        tpdu.unmarshal(bb);
-                                        if (TcpServer.SENT.contains(tpdu.getTimestamp())) {
-                                            TcpServer.SENT.remove(tpdu.getTimestamp());
-                                            send = false;
-                                        }
-                                        break;
-                                    case SIGNAL:
-                                        SignalPdu spdu = new SignalPdu();
-                                        spdu.unmarshal(bb);
-                                        if (TcpServer.SENT.contains(spdu.getTimestamp())) {
-                                            TcpServer.SENT.remove(spdu.getTimestamp());
-                                            send = false;
-                                        }
-                                        break;
-                                    default:
-                                        send = false;
-                                        break;
-                                }
-
-                                //if we are safe to send, forward the packet to the bridge server.
-                                if (send) {
-                                    LOGGER.log(Level.FINEST, "Writing to socket...");
-                                    synchronized (LOCK) {
-                                        socketOutputStream.writeInt(data.length);
-                                        socketOutputStream.write(data);
-                                        socketOutputStream.flush();
-                                    }
-                                } else {
-                                    LOGGER.log(Level.FINEST, "Found Sent Packet");
+                                LOGGER.log(Level.FINEST, "Forwarding to {0}", host);
+                                //the lock here is to stop incoming data from xcn to write
+                                //one at a time through the bridge.
+                                synchronized (LOCK) {
+                                    //write the length
+                                    socketOutputStream.writeInt(data.length);
+                                    //write the data
+                                    socketOutputStream.write(data);
+                                    socketOutputStream.flush();
                                 }
                             }
                             TcpClient.clients.remove(client);
@@ -216,7 +183,7 @@ public class TcpClient {
                             //LOGGER.log(Level.FINEST, "{0}: {1}:{2} - isClosed: {3}", new Object[]{ex.getMessage(), host, Rebroadcaster.MCAST_PORT, socket.isClosed()});
                         }
                     }
-                    LOGGER.log(Level.FINER, "Forward thread shutdown...");
+                    LOGGER.log(Level.FINER, "Forward thread to {0} shutdown...", host);
                 });
                 t.setDaemon(true);
                 t.start();
@@ -392,7 +359,7 @@ public class TcpClient {
                         break;
                     case "broad":
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Broad, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -400,7 +367,7 @@ public class TcpClient {
                     case "uni":
                         clients = line.getOptionValues("client");
                         try {
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex) {
                             LOGGER.log(Level.SEVERE, null, ex);
                         }
@@ -454,7 +421,7 @@ public class TcpClient {
                         //close the sockets for uni-casting
                         try {
                             Rebroadcaster.INSTANCE.halt();
-                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni);
+                            Rebroadcaster.INSTANCE.resetSocket(Rebroadcaster.CastingEnum.Uni, clients.length > 0 ? clients[0] : null);
                         } catch(IOException ex2) {
                         }
                     }

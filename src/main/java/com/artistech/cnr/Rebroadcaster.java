@@ -35,17 +35,18 @@ public class Rebroadcaster {
             try {
                 os = new DataOutputStream(sock.getOutputStream());
                 while (!data.isHalted()) {
-                    byte[] msg = data.getMessage();
-                    if (msg != null) {
-                        try {
+                    Collection<byte[]> msgs = data.getMessages();
+                    if (msgs != null) {
+                        for(byte[] msg : msgs) {
                             os.writeInt(msg.length);
                             os.write(msg);
-                            os.flush();
-                        } catch (IOException ex) {
                         }
                     }
+                    os.flush();
                 }
-            } catch (IOException ex2) {}
+            } catch (IOException ex) {
+                halt();
+            }
         }
 
         public void halt() {
@@ -66,6 +67,7 @@ public class Rebroadcaster {
     private static final Logger LOGGER = Logger.getLogger(Rebroadcaster.class.getName());
     public static final int MCAST_PORT = 3000;
     public static final String MCAST_GRP = "226.0.1.1";
+    private String broadcastFamily = null;
 
     private ServerSocket server;
     private final Map<String, RebroadcastThread> clientStreams = new HashMap<>();
@@ -95,7 +97,7 @@ public class Rebroadcaster {
      * @throws IOException if error resetting.
      */
     public void resetSocket() throws IOException {
-        resetSocket(castType);
+        resetSocket(castType, broadcastFamily);
     }
 
     /**
@@ -157,8 +159,9 @@ public class Rebroadcaster {
      * @param castType if true, use multicast; if false, use broadcast.
      * @throws IOException error if resetting.
      */
-    public void resetSocket(CastingEnum castType) throws IOException {
+    public void resetSocket(CastingEnum castType, String address) throws IOException {
         close();
+        broadcastFamily = address;
         this.castType = castType;
         //castType = multicast ? CastingEnum.Multi : CastingEnum.Broad;
 
@@ -173,7 +176,16 @@ public class Rebroadcaster {
             ms.joinGroup(group);
             socket = ms;
         } else if(castType == CastingEnum.Broad){
-            group = listAllBroadcastAddresses().get(0);
+            if(broadcastFamily == null) {
+                group = listAllBroadcastAddresses().get(0);
+            }
+            else {
+                //set off of the address base:
+                //x.y.z.255
+                int index = address.lastIndexOf('.');
+                address = address.substring(0, index) + "255";
+                group = InetAddress.getByName(address);
+            }
             //group = InetAddress.getByName("255.255.255.255");
             LOGGER.log(Level.INFO, "Broadcast Address: {0}", new Object[]{group.getHostAddress()});
 
@@ -192,7 +204,6 @@ public class Rebroadcaster {
 
                         if(!clientStreams.containsKey(client.getInetAddress().getHostAddress())) {
                             LOGGER.log(Level.FINER, "Received Connection: {0}", client.getInetAddress().getHostAddress());
-                            final DataOutputStream socketOutputStream = new DataOutputStream(client.getOutputStream());
                             RebroadcastThread rt = new RebroadcastThread();
                             rt.sock = client;
                             Thread t2 = new Thread(rt);
@@ -202,8 +213,7 @@ public class Rebroadcaster {
                         } else {
                             client.close();
                         }
-                    } catch(IOException ex)
-                    {
+                    } catch(IOException ex) {
                         //this should fire when server closes...
                         //close all open client connections.
                         for(RebroadcastThread client : Rebroadcaster.this.clientStreams.values()) {
@@ -264,11 +274,11 @@ public class Rebroadcaster {
      * @throws IOException
      */
     private Rebroadcaster(CastingEnum castType) throws IOException{
-        resetSocket(castType);
+        resetSocket(castType, broadcastFamily);
     }
 
     /**
-     * Send a packet of data
+     * Send a packet of data to uni-, multi-, or broadcast.
      *
      * @param buf the buffer to send.
      * @throws IOException error sending.
