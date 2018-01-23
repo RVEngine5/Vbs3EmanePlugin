@@ -19,15 +19,15 @@ At run-time, the IP addresses of the CNR-side clients must be known.
 
 `./cnr.scn`
 
+## Start each CNR-side client
+
+`java -jar cnr-bridge-1.0.jar -server BRIDGE_SERVER_IP`
+
 ## Run XCN Framework for CNR
 
 `./run_bridge_fcfs.sh`
 
 This will start the XCN nodes as described in the cnr.eel file, tell each node to run the EMANE-side client for communications, and then start the bridge server.  The bridge server runs as a first-come, first-serve so each CNR-side clien that connects will be 'pop' off an IP address of the EMANE-side to attache to.
-
-## Start each CNR-side client
-
-`java -jar cnr-bridge-1.0.jar -server BRIDGE_SERVER_IP`
 
 # Logging
 
