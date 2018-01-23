@@ -7,11 +7,11 @@ The architecture is CNR-side client listens to CNR.
 When the CNR-side client receives a PDU, it sends it to the bridge server.
 The bridge server will receive the packet on an out-facing network interface.
 
-On each node in the XCN, an emane-side client connects to the in-facing network interface from the bridge server.
-This allows the the bridge to send data into the XCN/emane simulation.
+On each node in the XCN, an EMANE-side client connects to the in-facing network interface from the bridge server.
+This allows the the bridge to send data into the XCN/EMANE simulation.
 
-The emane-side clients then do a unicast of packets to each node.
-As the other emane-side clients recieve data from within emane, they will send data back out from emane though the bridge-server to their own respective in-facing network interface to a paird CNR-side client.
+The EMANE-side clients then do a unicast of packets to each node.
+As the other EMANE-side clients recieve data from within EMANE, they will send data back out from EMANE though the bridge-server to their own respective in-facing network interface to a paird CNR-side client.
 
 At run-time, the IP addresses of the CNR-side clients must be known.
 
@@ -19,19 +19,11 @@ At run-time, the IP addresses of the CNR-side clients must be known.
 
 `./cnr.scn`
 
-## Start the bridge server
+## Run XCN Framework for CNR
 
-`./run_bridge.sh CNR_IP_1 CNR_IP_2 ... CNR_IP_N`
+`./run_bridge_fcfs.sh`
 
-Each CNR_IP address will be mapped to emane node 1 .. N in the order listed on the command line.
-
-## Start each emane-side client on each node
-
-`./emane-client.sh X`
-
-Where X is n1, n2, ..., nN.
-
-The emane-client.sh file has a hard-coded BRIDGE_SERVER_IP set and so may require editing.
+This will start the XCN nodes as described in the cnr.eel file, tell each node to run the EMANE-side client for communications, and then start the bridge server.  The bridge server runs as a first-come, first-serve so each CNR-side clien that connects will be 'pop' off an IP address of the EMANE-side to attache to.
 
 ## Start each CNR-side client
 
@@ -53,11 +45,7 @@ Levels are:
  - WARNING
  - SEVERE
  - OFF
-
-# Known Issues
-
-The setup does not deal well unless unicast is used on the emane-side clients.  Broadcast sometimes work using OLSRD, but is unreliable.  Using unicast works, but if any server/client disconnects, the entire simulation must be shutdown and restarted.
-
-## v1.0e Update
-
-Can now restart the bridge-server on-the-fly and all pieces will re-connect.  Testing each emane-side client is next.
+ 
+ # Ending Simulation
+ 
+`CTRL + C` to end the `.\run_bridge_fcfs.sh` script and then run `.\kill.sh` to kill all XCN docker instances.
