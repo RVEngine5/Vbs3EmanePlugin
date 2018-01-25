@@ -2,9 +2,9 @@
 
 - Install Ubuntu 16.04 LTS
 - Grab XCN software from NSCTA SVN
-
-  `Emulation_Experiments`
-  `Tools`
+  - `Emulation_Experiments\instal_scripts`
+  - `Emulation_Experiments\xcn`
+  - `Emulation_Experiments\cnr`
 - From the `install_scripts` directory, run
     - `./setup_env_apt.sh`
     - `./install-emane.sh`
